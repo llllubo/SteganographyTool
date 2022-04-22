@@ -1,0 +1,193 @@
+VSETKY PRIZNAKY: OF, SF, ZF, [AF], CF, PF
+
+REG-REG OPS -> prehodene operandy, zabezpeci DIR bit v OPCODE:
+    ADD
+        napr. ADD eax, ebx -> 01d8 alebo 03c3
+        napr. ADD eax, eax -> 01c0 alebo 03c0
+    ADC, AND, XOR, OR, SBB, SUB, CMP, MOV
+
+SWAP BASE AND INDEX REGISTERS IF SCALE = 1:
+    napr. MOV byte[eax + ebx*1], 5 -> [67:]c604 1800 (s alebo bez prefixu)
+          MOV byte[ebx + eax*1], 5 -> [67:]c604 0300 (s alebo bez prefixu)
+
+SAL/SHL - /4 a /6 (100 a 110) -> oblast reg/opcode
+(SAL sa vzdy zmeni na SHL pri disassemblovani)
+MENI VSETKY PRIZNAKY okrem AF !!!
+    SHL eax, 0 -> c1e0 00 alebo c1f0 00
+
+TEST with imm operand -> /0 a /1
+MENI VSETKY PRIZNAKY !!!
+    napr. TEST ebx, 5 (F7C3 05000000 alebo F7CB 05000000)
+
+ALT. OPCODE WITH IMM BYTE OPERAND [LEN PRE 32-bit EXISTUJE AJ DRUHY OPCODE]:
+(meni sa DIR bit z 0 na 1)
+    ADD
+        napr. ADD byte[eax], 0 -> 8000 00 alebo 8200 00
+    OR
+        napr. OR byte[eax], 0  -> 8008 00 alebo 8208 00
+    ADC
+    SBB
+    AND
+    SUB
+    XOR
+    CMP
+
+# NOVY NAPAD NA KODOVANIE:
+    # REP,   REPE, REPZ,    REPNE, REPNZ    -- pre retazcove instrukcie, NEMENIA PRIZNAKY
+    # prefixy su rozdelene do 4 skupin.. z toho len jedna skupina (REX) musi byt posledna spomenuta (if present), lebo musi byt hned pred OPCODE;
+        # zvysne tri mozu byt zadane v lubovolnom poradi -- poradie koduje, kedze su len tri, pouzit jedno ako wildcard -- obkukat.
+    # ak je pritomny mandatory prefix, musi byt hned pred OPCODE alebo, ak je REX present, tak hned pred REX.
+        # nachadza sa pri konkretnych instrukciach, kde je povinny -- rozsiruje priestor dany pre specifikaciu OPCODE, cim je mozne jeden OPCODE pouzit aj na iny ucel.
+    # ^^ SEE PREFIX-GROUPS IMAGE IN WIN10
+
+SIZE-CHANGING TRICKS:
+(pouzitelne len ak by sa za instrukciou nachadzal NOP, ktory by sa prepisal)
+SPECIALNE OPCODES PRE EAX A BYTE IMM:
+    ak je imm operand -80 az 7f, moze sa zakodovat na 1B namiesto 4B
+    compiler vybera prvy opcode
+    napr. ADD eax, 1 -> 83c0 01         alebo 
+                        81c0 0100 0000  alebo
+                        0501 0000 00
+POUZITIE SIB BAJTU KED HO NETREBA:
+    MOD ostava
+    reg/opcode musi byt 000 - ostava
+    mem v ModR/M na 100
+    '-> ModR/M bude xx 000 100
+    SCALE sa meni - hocijaky
+    INDEX sa nastavi na 100
+    BASE sa nastavi podla registra (ak ziaden tak 101)
+ZERO OFFSET:
+    (alternativy k NOP tym ze sa dava padding za instrukciu - jej natiahnutim)
+    MOD je 00 alebo 01 alebo 10
+    reg/opcode aj r/m ostavaju
+    '-> tym ze menim MOD sa mi meni displacement (0/8/32), ktory sa
+        nasledne vynuluje
+    napr.   013e -> ziaden
+            017e 00 -> d8
+            01be 0000 0000 -> d32
+
+?
+SUB eax, -128 to ADD 0x80, using byte imm
+ADD eax, -128 to SUB 0x80, using byte imm
+?
+
+NIC NEROBIACE INSTRUKCIE:
+32/64-bit:
+    XCHG   eax, eax ->    90        => NOP
+ 2x CMC             ->    f5
+
+64-bit
+    XCHG   rax, rax -> 48:90        => NOP
+    MOV    rax, rax -> 48:89 c0
+    MOVSXD rax, Eax -> 48:63 c0
+    LEA    rax, [rax + 0x00] -> 48:8d 40 00
+ 2x NOT    rax      -> 48:f7 d0 
+    NOT    eax ; NOT rax     ->    f7 d0 ; 48:f7 d0
+ 2x NEG    rax      -> 48:f7 d8
+    NEG    eax ; NEG rax     ->    f7 d8 ; 48:f7 d8
+ 2x CMC             -> 48:f5
+    CMC ; CMC       -> 48:f5 ; f5 ALEBO f5 ; 48:f5
+    INC    eax ; DEC rax     ->    ff c0 ; 48:ff c8
+    INC    rax ; DEC rax     -> 48:ff c0 ; 48:ff c8
+    
+    DEC    rax ; INC rax     ->    ff c8 ; 48:ff c0
+    DEC    rax ; INC rax     -> 48:ff c8 ; 48:ff c0
+
+32-bit
+    MOV    eax, eax ->    89 c0
+    MOVSXD eax, eax ->    63 c0     (ax,ax ................?)
+    LEA    eax, [eax + 0x00] ->    8d 40 00
+ 2x NOT    eax      ->    f7 d0
+ 2x NEG    eax      ->    f7 d8
+    INC    eax ; DEC eax     -> ff c0 ; ff c8
+    DEC    eax ; INC eax     -> ff c8 ; ff c0
+
+
+# NIC NEROBIACE INSTRUKCIE DOPLNIT O:
+    # INC a DEC v kombinacii so SUB a ADD
+
+    # PUSH a za tym POP
+    # '-> PUSH imm == SUB ESP, 4     ; MOV dword [ESP], imm
+    # '-> POP  dst == MOV dst, [ESP] ; ADD ESP, 4
+    # '-> alebo len posunut ESP => SUB ESP, 4 ; ADD ESP, 4
+    # MENI PRIZNAKY
+    # trebalo by to vyskusat ci by to fungovalo tak pekne kvoli zasobniku
+
+    # 3 mozne sposoby ako pouzit LEA - su s rozdielnou dlzkou; funguju len na R a E registry
+    # LEA reg, [a + s*b + c]    =  > reg = a_reg + scale*b_reg + c_konst
+    # tieto tri rozne su: [eax]; [eax + 0]; [1*eax]
+
+    # TOTO CO TU MAM, TAK VYSKUSAT AJ S REG ebx ecx edx a dalsie..
+    # TIETO FUNKCIE S INYM AKO EAX MAJU UZ DLHSI OPCODE o 1B; OVERIT !!!
+    # vyskusat este aj xchg al, al (OPCODE: 86 c0 == NOP) s bx, cl, dh...
+
+
+
+    # LOGICKE INSTRUKCIE: - nastavuju priznaky -- POZOR: NENI PRETO MOZNE ICH POUZIT NAMIESTO NOP; NASTAVUJU NA ZACIATKU OF A CF NA 0 !!!!!
+    # AND eax, eax ; AND reg, 1's ; AND mem, 1's
+    # OR ^^
+    # NOT reg/mem - NEMENI PRIZNAKY, ale nuntne pouzit 2x za sebou
+    # TEST eax, eax == AND eax, eax == OR eax, eax
+        ==? XOR eax, 0
+    # CMP eax, 0 == SUB eax, 0  =>  reg, imm ; mem, imm ; reg16/32, imm8
+
+
+
+
+NOPy:
+
+# HINT_NOP r/m16/32 => undocumented NOP instructions.
+# '-> 0F 18 (4-7 Register/OPCODE)   IDE v x64dgb  ->  MOD musi byt 11; zmena r/m meni mnemonic; zmena Reg/Opcode nemeni nic     MA LEN JEDEN OPERAND
+# '-> 0F 19                         IDE v x64dgb  ->  MOD musi byt 11; nastavujem zvysne bity v ModR/M                          MA OBE OPERANDY
+# '-> 0F 1A                         IDE v x64dgb  ->  MOD musi byt 11; nastavujem zvysne bity v ModR/M                          MA OBE OPERANDY
+# '-> 0F 1B                         IDE v x64dgb  ->  MOD musi byt 11; nastavujem zvysne bity v ModR/M                          MA OBE OPERANDY
+# '-> 0F 1C                         IDE v x64dgb  ->  MOD musi byt 11; nastavujem zvysne bity v ModR/M                          MA OBE OPERANDY
+# '-> 0F 1D                         IDE v x64dgb  ->  MOD musi byt 11; nastavujem zvysne bity v ModR/M                          MA OBE OPERANDY
+# '-> 0F 1E                         IDE v x64dgb  ->  MOD musi byt 11; nastavujem zvysne bity v ModR/M                          MA OBE OPERANDY
+# '-> 0F 1F (0-7 Register/OPCODE)   IDE v x64dgb  ->  MOD musi byt 11; nastavujem zvysne bity v ModR/M        OPATRNE           MA OBE OPERANDY
+# NOP r/m16/32 -> 0F 0D ...         IDE v x64dgb
+
+# NOPy multi-byte bezia len v 'long mode' - 64-bitovy mod, v ktorom sa mozu pouzivat 64-bitove instrukcie a registry. Mozne pre procesory x86-64, ktore sa chovaju kompatibilne s IA-32 procesormi.
+# NOP 0x90 sa dekoduje na xchg eax, eax v kazdom mode, okrem long mode (64-bit), avsak v nom tiez nema 0x90 ziaden efekt -- okrem EIP registra, teda moze byt multi-byte NOP aj v non-64-bit mode (compatibility mode).
+# multi-byte NOP generuje undefined exception na procesoroch, ktore ho nepodporuju.
+# NOP sa pouziva na zarovnanie programoveho kodu, zariaduje to compiler - zvycajne lebo kod je target pre jump a je vyhodnejsie mat to zarovnane na 16-byte (paragraph) alebo na 32-byte boundary (cache line). Je tomu tak aby sa zvysil vykon.
+# xchg sa pouzilo raz za velmi dlhy program.. to znamena ze lahka detekcia stegano ak sa objavuje casto xchg - ako som chcel vyssie, pre ukrytie bitov.
+# 1B NOP ->    90                       => NOP
+# 2B FNOP-> D9 D0
+# 2B NOP -> 66 90                       => xchg   %ax,%ax
+# 3B NOP ->    0F 1F 00                 => NOPL   (%rax)            NAHRADZAM NULY VSADE NIZSIE, OKREM TEJTO INSTR.
+# 4B NOP ->    0F 1F 40 00              => NOPL   0x0(%rax)
+# 5B NOP ->    0F 1F 44 00 00           => NOPL   0x0(%rax,%rax,1)
+# 6B NOP -> 66 0F 1F 44 00 00           => NOPW   0x0(%rax,%rax,1)
+# 7B NOP ->    0F 1F 80 00 00 00 00     => NOPL   0x0(%rax)
+# 8B NOP ->    0F 1F 84 00 00 00 00 00  => NOPL   0x0(%rax,%rax,1)
+# 9B NOP -> 66 0F 1F 84 00 00 00 00 00  => NOPW   0x0(%rax,%rax,1)  PO TADE KLASICKE DOKUMENTOVANE
+
+# 10B NOP-> 66 2E 0F 1F 84 00 00 00 00 00     => NOPW   %cs:0x0(%rax,%rax,1)
+# AMD and Intel; na mojom PC ide vsetko hore ^^
+
+# ONLY AMD; na mojom PC ide
+# 10B NOP-> 66 66 0F 1F 84 00 00 00 00 00     => NOPW   %ds:0x0(%rax,%rax,1)
+# 11B NOP-> 66 66 66 0F 1F 84 00 00 00 00 00  => NOPW   %ds:0x0(%rax,%rax,1)
+
+# alt_short AMD -- su len kombinacie klasickych vyssie
+
+# alt_long Intel; na mojom PC ide vsetko..
+# 11B NOP-> 66 66 2e 0F 1F 84 00 00 00 00 00  => NOPW   data16 %cs:0x0(%rax,%rax,1)
+# 12B NOP-> 66 66 66 2e 0F 1F 84 00 00 00 00 00  => NOPW   data16; data16 %cs:0x0(%rax,%rax,1)
+# 13B NOP-> 66 66 66 66 2e 0F 1F 84 00 00 00 00 00  => NOPW   data16; data16; data16 %cs:0x0(%rax,%rax,1)
+# 14B NOP-> 66 66 66 66 66 2e 0F 1F 84 00 00 00 00 00  => NOPW   data16; data16; data16; data16 %cs:0x0(%rax,%rax,1)
+# 15B NOP-> 66 66 66 66 66 66 2e 0F 1F 84 00 00 00 00 00  => NOPW   data16; data16; data16; data16; data16 %cs:0x0(%rax,%rax,1)
+# plus existuju tie iste ale namiesto 2e maju este jednu 66 (namiesto cs je ds, prip ss v 32-bit)
+
+# MOJE VYMYSLENE -- takym sposobom kombinacie, musi platit ze naviac je 15B
+#  4B NOP-> 0f 1f 04 00
+#  4B NOP-> 66 0f 1f 00
+#  9B NOP-> 66 0f 1f 04 00 00 00 00 00
+# 15B NOP-> 66 66 66 66 66 66 66 2e 0F 1F 80 00 00 00 00
+# 15B NOP-> 66 66 66 66 66 66 66 66 0F 1F 80 00 00 00 00
+# 14B NOP-> 66 66 66 66 66 66 66 66 2e 0F 1F 44 00 00
+# 15B NOP-> 66 66 66 66 66 66 66 66 66 66 66 66 66 66 90
+# ....
+
+# 66 prefix indicates WORD, otherwise it's DWORD (l).

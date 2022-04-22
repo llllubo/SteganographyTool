@@ -1,0 +1,188 @@
+{
+    "ZAMENIM AJ XCHG 6690 ZA 2x NOP 90 alebo 2x ZA SEBOU IDUCE NOP ZA XCHG":0,
+    
+    "MODRM byte nie je pritomy ak je acc reg - tie maju specificky opcode":0,
+    "test-non-acc-reg": {
+        "DESCRIPTION": "TEST instruction differ has two opcodes when first operand si non-accumulator register (only AH register is allowed) and second is immediate value. Bit of information is hidden in ModR/M byte at LSB of Reg/Opcode field. E.g. TEST ebx, 0x10",
+        "members": [
+            "TEST /0",
+            "TEST /1"
+        ]
+    },
+    "swap-base-index": {
+        "DESCRIPTION": "It's possible to swap base and index registers, if scale is set to 1 (registers in memory operand can be at least 32-bits long). E.g. MOV dword[eax + ebx*1], 0x5; MOV dword[ebx + eax*1], 0x5",
+        "members": [
+            "OPCODE m, r/imm",
+            "OPCODE r, m"
+        ]
+    },
+    "shl-sal": {
+        "DESCRIPTION": "SAL is always changed to SHL by disassemblers. They differ in Reg/Opcode field inside ModR/M byte. SHL/SAL eax, 0x2",
+        "members": [
+            "SHL /4",
+            "SHL /6"
+        ]
+    },
+
+
+    "add-32bit": {
+        "DESCRIPTION": "ADD instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. ADD byte [eax], 0x2",
+        "members": [
+            "ADD m8, imm8",
+            "ADD non-al-r8, imm8"
+        ]
+    },
+    "sub-32bit": {
+        "DESCRIPTION": "SUB instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. SUB byte [eax], 0x2",
+        "members": [
+            "SUB m8, imm8",
+            "SUB non-al-r8, imm8"
+        ]
+    },
+    "cmp-32bit": {
+        "DESCRIPTION": "CMP instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. CMP byte [eax], 0x2",
+        "members": [
+            "CMP m8, imm8",
+            "CMP non-al-r8, imm8"
+        ]
+    },
+    "and-32bit": {
+        "DESCRIPTION": "AND instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. AND byte [eax], 0x2",
+        "members": [
+            "AND m8, imm8",
+            "AND non-al-r8, imm8"
+        ]
+    },
+    "or-32bit": {
+        "DESCRIPTION": "OR instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. OR byte [eax], 0x2",
+        "members": [
+            "OR m8, imm8",
+            "OR non-al-r8, imm8"
+        ]
+    },
+    "xor-32bit": {
+        "DESCRIPTION": "XOR instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. XOR byte [eax], 0x2",
+        "members": [
+            "XOR m8, imm8",
+            "XOR non-al-r8, imm8"
+        ]
+    },
+    "adc-32bit": {
+        "DESCRIPTION": "ADC instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. ADC byte [eax], 0x2",
+        "members": [
+            "ADC m8, imm8",
+            "ADC non-al-r8, imm8"
+        ]
+    },
+    "sbb-32bit": {
+        "DESCRIPTION": "SBB instruction with immediate byte operand has two possible opcodes, but ONLY in 32-bit versions! Bit of information is hidden in Direction bit of instruction opcode. E.g. SBB byte [eax], 0x2",
+        "members": [
+            "SBB m8, imm8",
+            "SBB non-al-r8, imm8"
+        ]
+    },
+
+
+    "tao": {
+        "DESCRIPTION": "Must have both operands same (registers)! This has priority over the 'and' and 'or' classes. E.g. TEST/AND/OR eax, eax. All these instructions modify RFLAGS register in the same way.",
+        "members": [
+            "TEST r/m, r",
+            "AND r/m, r",
+            "AND r, r/m",
+            "OR r/m, r",
+            "OR r, r/m"
+        ]
+    },
+    
+    "ROZPISAT V TEXTE ZE HOCI NASTAVUJE XOR CF A OF NA 0, AK BUDU OBE REGISTRE STEJNE, VYSLEDOK JE VZDY NULA A TEDA TOTO NASTAVENIE PLATI AJ PRE SUB... Af vyuzivaju BCD INSTRUKCIE ADD A SUB, TEDA SA CASTO NEPOUZIVA, PRETO VO VACSINE PRIPADOV NESTOJI V CESTE PRI ZAMENE.. (CHECK WIKI ADJUST FLAG)":0,
+    "sub-xor": {
+        "DESCRIPTION": "Must have both operands same (registers)! This has priority over the 'and' and 'or' classes. E.g. XOR/SUB eax, eax. Only Flag AF is modified by both instructions in different way, therefore it has to be checked.",
+        "members": [
+            "XOR r/m, r",
+            "XOR r, r/m",
+            "SUB r/m, r",
+            "SUB r, r/m"
+        ]
+    },
+
+
+    "mov": {
+        "DESCRIPTION": "MOV instruction has two possible opcodes when both operands are any registers. E.g. MOV ebx, ecx",
+        "members": [
+            "MOV r/m, r",
+            "MOV r, r/m"
+        ]
+    },
+    "add": {
+        "DESCRIPTION": "ADD instruction has two possible opcodes when both operands are any registers. E.g. ADD ebx, ecx",
+        "members": [
+            "ADD r/m, r",
+            "ADD r, r/m"
+        ]
+    },
+    "sub": {
+        "DESCRIPTION": "SUB instruction has two possible opcodes when both operands are any registers. E.g. SUB ebx, ecx",
+        "members": [
+            "SUB r/m, r",
+            "SUB r, r/m"
+        ]
+    },
+    "and": {
+        "DESCRIPTION": "AND instruction has two possible opcodes when both operands are any registers. E.g. AND ebx, ecx",
+        "members": [
+            "AND r/m, r",
+            "AND r, r/m"
+        ]
+    },
+    "or": {
+        "DESCRIPTION": "OR instruction has two possible opcodes when both operands are any registers. E.g. OR ebx, ecx",
+        "members": [
+            "OR r/m, r",
+            "OR r, r/m"
+        ]
+    },
+    "xor": {
+        "DESCRIPTION": "XOR instruction has two possible opcodes when both operands are any registers. E.g. XOR ebx, ecx",
+        "members": [
+            "XOR r/m, r",
+            "XOR r, r/m"
+        ]
+    },
+    "cmp": {
+        "DESCRIPTION": "CMP instruction has two possible opcodes when both operands are any registers. E.g. CMP ebx, ecx",
+        "members": [
+            "CMP r/m, r",
+            "CMP r, r/m"
+        ]
+    },
+    "adc": {
+        "DESCRIPTION": "ADC instruction has two possible opcodes when both operands are any registers. E.g. ADC ebx, ecx",
+        "members": [
+            "ADC r/m, r",
+            "ADC r, r/m"
+        ]
+    },
+    "sbb": {
+        "DESCRIPTION": "SBB instruction has two possible opcodes when both operands are any registers. E.g. SBB ebx, ecx",
+        "members": [
+            "SBB r/m, r",
+            "SBB r, r/m"
+        ]
+    },
+
+
+    "add-neg": {
+        "DESCRIPTION": "Addition with immediate value and subtraction with its negative form of immediate value! E.g. ADD ebx, 0x10; SUB ebx, -0x10. Flags OF, CF and AF are modified differently, therefore they need to be checked.",
+        "members": [
+            "ADD r/m, imm",
+            "SUB r/m, -imm"
+        ]
+    },
+    "sub-neg": {
+        "DESCRIPTION": "Subtraction with immediate value and addition with its negative form of immediate value! E.g. SUB ebx, 0x10; ADD ebx, -0x10. Flags OF, CF and AF are modified differently, therefore they need to be checked.",
+        "members": [
+            "SUB r/m, imm",
+            "ADD r/m, -imm"
+        ]
+    }
+}
