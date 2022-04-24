@@ -98,7 +98,7 @@ class Main:
 
             got_op_code = my_instr.instruction.op_code()
             
-            # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}     {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15}")
+            print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15}")
         
         ##### TESTOVANIE
         # opat sa disassembluje vstupny subor a printnu sa instrukcie..
@@ -125,7 +125,7 @@ class Main:
     
     
         ############ VYTVORIT EQ CLASSES PODLA METODY
-        print(f"\nNONE: {0x0:08b}\n  OF: {0x1:08b}\n  SF: {0x2:08b}\n  ZF: {0x4:08b}\n  AF: {0x8:08b}\n  CP: {0x10:08b}\n  PF: {0x20:08b}")
+        print(f"\nNONE: {0x0:08b}\n  OF: {0x1:08b}\n  SF: {0x2:08b}\n  ZF: {0x4:08b}\n  AF: {0x8:08b}\n  CF: {0x10:08b}\n  PF: {0x20:08b}")
         return
         
         ######### POZOR NA ENDIANNESS, NEVIEM CI SOM DOBRE TVORIL BYTES..

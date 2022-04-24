@@ -1,3 +1,4 @@
+from base64 import decode
 import sys
 import subprocess
 import re
@@ -137,6 +138,64 @@ class Disassembler:
             return True
         
         return False
+    
+    
+    @staticmethod
+    def __liveness_flags_detection(
+        all_instrs: list,
+        my_instr: MyInstruction,
+        check_rflags: int
+        ) -> bool:
+        # LIVENESS DETECTION OF MODIFIED FLAGS BY REPLACEMENT INSTRUCTION.
+        
+        if check_rflags == RflagsBits.NONE:
+            return True
+        
+        # flags = instr.rflags_modified
+        instr = my_instr.instruction
+        got_op_code = instr.op_code()
+        print(f"{got_op_code.instruction_string:16} | 0b{check_rflags:>8b}")
+        
+        all_rflags = (RflagsBits.OF, RflagsBits.SF, RflagsBits.ZF,
+                      RflagsBits.AF, RflagsBits.CF, RflagsBits.PF,
+                      RflagsBits.DF, RflagsBits.IF, RflagsBits.AC,
+                      RflagsBits.UIF)
+        check_rflags = [rflag
+                        for rflag in all_rflags
+                        if (rflag & check_rflags) != 0]
+        
+        orig_my_instr = my_instr
+        return True
+        next_my_instr = all_instrs[my_instr.ioffset + 1]
+        while (next_my_instr.instruction.flow_control == FlowControl.NEXT):
+            pass
+            for rflag in check_rflags:
+                pass
+            
+            next_my_instr = all_instrs[my_instr.ioffset + 1]
+        
+        # for rflag in all_rflags:
+
+        #     if (rflag & check_flags) != 0:
+        #         print(f"TU: {rflag & check_flags:b}")
+
+
+        #         next_my_instr = all_instrs[my_instr.ioffset + 1].instruction
+        #         while (next_my_instr.intruction.flow_control == FlowControl.NEXT):
+        #             ## KONTROLA ZIVOSTI
+        #             ## MUSIM IST PODLA EXECUTION FLOW - PORIESIT SKOKY
+        #             # ^^ prechadzam kym nepride end of function alebo kym nepride instrukcia ktora modifikuje tento znak skor ako pride instrukcia, ktora ho cita.
+        #             if True:
+        #                 pass
+
+        #             nextt = next_instr.opcode()
+        #             print(f"next: {nextt.instruction_string}")
+                    
+        #             next_instr = all_instrs[instr.ioffset + 1].instruction
+
+        #### NAVYSE SKONTROLOVAT CI TO PLATI PRE VSETKY CHECK FLAGS, AK ANO, AZ POTOM VRACIAM TRUE.
+                
+        return True
 
     
     @staticmethod
@@ -189,9 +248,7 @@ class Disassembler:
                 all_instrs.append(my_instr)
                 
                 ########
-                op_code = my_instr.instruction.op_code()
-                
-                # print(op_code.instruction_string)
+                op_code = instr.op_code()
 
                 if method == "nops" or \
                    method == "nops-embedding" or \
@@ -231,7 +288,7 @@ class Disassembler:
                             selected_instrs.append(my_instr)
                             
                             cap += get_numof_useable_b_from_nop(
-                                my_instr.instruction,
+                                instr,
                                 code_bitness
                                 )
                             
@@ -331,10 +388,8 @@ class Disassembler:
                     ############ VYMENA OPERANDOV ak menim strany r, r/m
                 
                     ###### ZJEDNODUSIT PRE UCELY LEN NAJDENIA
-                
-                    ############ AND A OR MOZU MAT PODMIENKY AJ AKO TEST
 
-                    ## FIRST CLASS - 'tao'.
+                    ## CLASS 'tao'.
                     # TEST r/m, r (TEST r, r\m does not exist).
                     if re.match(
                             r'TEST r/m[0-9]{1,2}, r[0-9]{1,2}',
@@ -367,10 +422,19 @@ class Disassembler:
                         ) and instr.op0_kind == OpKind.REGISTER and \
                             instr.op1_kind == OpKind.REGISTER and \
                             instr.op0_register == instr.op1_register:
-                        selected_instrs.append(my_instr)
-                        cap += 2
+                        
                         ############# CHECK AF flag
-                        print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
+                        if Disassembler.__liveness_flags_detection(
+                                all_instrs,
+                                my_instr,
+                                RflagsBits.AF
+                                ):
+                            # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
+                            selected_instrs.append(my_instr)
+                            cap += 2
+                        
+                        
+                        
                     
                     ## ALL CLASSES WITH r/m, r & r, r/m INSTR. VERSIONS.
                     # r/m, r versions of MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB.
@@ -408,12 +472,17 @@ class Disassembler:
                         # '.*-32bit'.
                         if selected_instrs and \
                         id(selected_instrs[-1]) != id(my_instr):
-                            ############ CHECK OF, CF, AF flags
-                            # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
-                            selected_instrs.append(my_instr)
-                            ########## nulu nemozem negovat, zachovam ju
                             
-                            cap += 1
+                            ############ CHECK OF, CF, AF flags
+                            # if Disassembler.__liveness_flags_detection(
+                            #     all_instrs,
+                            #     my_instr,
+                            #     RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            #     ):
+                                # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
+                                selected_instrs.append(my_instr)
+                                ########## nulu nemozem negovat, zachovam ju
+                                cap += 1
                         
                     # SUB r/m, -imm .. NEGATED
                     elif re.match(
@@ -427,10 +496,16 @@ class Disassembler:
                         # '.*-32bit'.
                         if selected_instrs and \
                         id(selected_instrs[-1]) != id(my_instr):
+                            
                             ############ CHECK OF, CF, AF flags
-                            # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
-                            selected_instrs.append(my_instr)
-                            cap += 1
+                            # if Disassembler.__liveness_flags_detection(
+                            #     all_instrs,
+                            #     my_instr,
+                            #     RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            #     ):
+                                # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
+                                selected_instrs.append(my_instr)
+                                cap += 1
                         
                     # SUB r/m, imm
                     elif re.match(
@@ -444,12 +519,17 @@ class Disassembler:
                         # '.*-32bit'.
                         if selected_instrs and \
                         id(selected_instrs[-1]) != id(my_instr):
+                            
                             ############ CHECK OF, CF, AF flags
-                            # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
-                            selected_instrs.append(my_instr)
-                        ########## nulu nemozem negovat, zachovam ju
-                        
-                            cap += 1
+                            # if Disassembler.__liveness_flags_detection(
+                            #     all_instrs,
+                            #     my_instr,
+                            #     RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            #     ):
+                                # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
+                                selected_instrs.append(my_instr)
+                                ########## nulu nemozem negovat, zachovam ju
+                                cap += 1
                         
                     # ADD r/m, -imm .. NEGATED
                     elif re.match(
@@ -463,10 +543,16 @@ class Disassembler:
                         # '.*-32bit'.
                         if selected_instrs and \
                         id(selected_instrs[-1]) != id(my_instr):
+                            
                             ############ CHECK OF, CF, AF flags
-                            # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
-                            selected_instrs.append(my_instr)
-                            cap += 1
+                            # if Disassembler.__liveness_flags_detection(
+                            #     all_instrs,
+                            #     my_instr,
+                            #     RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            #     ):
+                                # print(f"0b{instr.rflags_read:b} .... 0b{instr.rflags_modified:b}")
+                                selected_instrs.append(my_instr)
+                                cap += 1
                 
                 ##### KONTROLNY VYPIS
                 # disasm = formatter.format(all_instrs[i].instruction)
