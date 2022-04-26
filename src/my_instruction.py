@@ -7,10 +7,12 @@ class MyInstruction:
     def __init__(self,
                  instr: Instruction,
                  foffset: int,
-                 ioffset: int) -> None:
+                 ioffset: int,
+                 eq_class: str) -> None:
         self.__instr = instr
         self.__foffset = foffset
         self.__ioffset = ioffset
+        self.__eq_class = eq_class
         
         
     @property
@@ -41,3 +43,13 @@ class MyInstruction:
     @ioffset.setter
     def set_ioffset(self, ioffset: int) -> None:
         self.__ioffset = ioffset
+        
+        
+    @property
+    def eq_class(self) -> str:
+        return self.__eq_class
+    
+    
+    @eq_class.setter
+    def set_eq_class(self, eq_class: str) -> None:
+        self.__eq_class = eq_class

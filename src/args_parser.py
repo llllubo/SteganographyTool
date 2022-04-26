@@ -9,10 +9,10 @@ class ArgsParser():
     __args = None
         
         
-    @staticmethod
-    def __set_parser() -> None:
+    @classmethod
+    def __set_parser(cls) -> None:
         
-        ArgsParser.__parser = argparse.ArgumentParser(
+        cls.__parser = argparse.ArgumentParser(
             usage="""
   %(prog)s MODE -m METHOD [-s SECRET_MESSAGE] [-c COVER_FILE] [-g STEGO_FILE]
             [-v/--verbose] [-h/--help] [-V/--version]""",
@@ -31,10 +31,10 @@ class ArgsParser():
             exit_on_error=False
             )
         
-        # ArgsParser.__parser._positionals.title = "Positional arguments:"
-        # ArgsParser.__parser._optionals.title = "Optional arguments:"
+        # cls.__parser._positionals.title = "Positional arguments:"
+        # cls.__parser._optionals.title = "Optional arguments:"
         
-        ArgsParser.__parser.add_argument(
+        cls.__parser.add_argument(
             "mode",
             help="""the mode in which program will run (possible values:
 'e'/'embed', 'x'/'extract', 'a'/'analyze' or 'r'/'reset')
@@ -51,7 +51,7 @@ MODE=reset   - resets hidden message from stego-file""",
                      "r", "reset"]
             )
         
-        requiredArgs = ArgsParser.__parser.add_argument_group("required arguments")
+        requiredArgs = cls.__parser.add_argument_group("required arguments")
         requiredArgs.add_argument(
             "-m",
             "--method",
@@ -62,11 +62,12 @@ or analyze cover file (possible values: 'sub'/
             choices=["sub", "instruction-substitution",
                      "ext-sub", "extended-substitution",
                      "nops", "nops-embedding",
-                     "ext-sub-nops"],
+                     "ext-sub-nops",
+                     "mov"],
             required=True
             )
         
-        ArgsParser.__parser.add_argument(
+        cls.__parser.add_argument(
             "-h",
             "--help",
             help="""show this message and exit
@@ -74,7 +75,7 @@ or analyze cover file (possible values: 'sub'/
             action="help",
             default=argparse.SUPPRESS
             )
-        ArgsParser.__parser.add_argument(
+        cls.__parser.add_argument(
             "-s",
             "--secret-message",
             help="""SECRET_MESSAGE to be hidden within executable (any
@@ -82,27 +83,27 @@ sequence of bytes)
  """,
             default=sys.stdin
             )
-        ArgsParser.__parser.add_argument(
+        cls.__parser.add_argument(
             "-c",
             "--cover-file",
             help="""COVER_FILE (executable) to be secret message hidden in
             """
             )
-        ArgsParser.__parser.add_argument(
+        cls.__parser.add_argument(
             "-g",
             "--stego-file",
             help="""executable (STEGO_FILE) with embedded secret message
 to be extracted or reset
             """
             )
-        ArgsParser.__parser.add_argument(
+        cls.__parser.add_argument(
             "-v",
             "--verbose",
             help="""output verbosity while processing
             """,
             action="store_true"
             )
-        ArgsParser.__parser.add_argument(
+        cls.__parser.add_argument(
             "-V",
             "--version",
             help="""show current program's version and exit (ignoring other
@@ -112,9 +113,9 @@ arguments)""",
             )
         
         
-    @staticmethod
-    def __eprint(msg: str, ec: int) -> None:
-        p = ArgsParser.__parser
+    @classmethod
+    def __eprint(cls, msg: str, ec: int) -> None:
+        p = cls.__parser
         print("usage:", file=sys.stderr)
         print(
             f"  {p.prog} " """MODE -m METHOD [-s SECRET_MESSAGE] [-c COVER_FILE] [-g STEGO_FILE]
@@ -125,100 +126,100 @@ arguments)""",
         sys.exit(ec)
         
         
-    @staticmethod
-    def __check_file(f: str) -> None:
+    @classmethod
+    def __check_file(cls, f: str) -> None:
         if not os.path.isfile(f):           
-            ArgsParser.__eprint(f"the following value is not a file: {f}", 100)
+            cls.__eprint(f"the following value is not a file: {f}", 100)
         
         
-    @staticmethod
-    def __parse_secret_message() -> None:
+    @classmethod
+    def __parse_secret_message(cls) -> None:
         # ak je secret_message stdin, zacnem citat vstup
         # vystup do ./extracted/output.txt; pripona sa neuklada, ulozi sa ako same jednicky -- nuly budu ziadna pripona - binarka
-        if ArgsParser.__args.secret_message == sys.stdin:
+        if cls.__args.secret_message == sys.stdin:
             # Read given input from 'stdin'.
             print("Please, enter the data you want to embed:")
-            ArgsParser.__args.secret_message = sys.stdin.read().rstrip('\n')
+            cls.__args.secret_message = sys.stdin.read().rstrip('\n')
             # In case that empty input was given, program correctly ends.
-            if ArgsParser.__args.secret_message == "":
+            if cls.__args.secret_message == "":
                 sys.exit(0)
         # ak je zadane -s, check ci je to platna cesta
         # ak ano, skryvat sa bude binarny obsah suboru (teda cely subor)
         # citam subor binarne, po bajtoch, vystup bude subor (uklada sa pripona)
         # The whole file is going to be embedded.
-        elif os.path.isfile(ArgsParser.__args.secret_message):
-            ArgsParser.__args.secret_message = os.path.abspath(ArgsParser.__args.secret_message)
+        elif os.path.isfile(cls.__args.secret_message):
+            cls.__args.secret_message = os.path.abspath(cls.__args.secret_message)
         # ak je zadane -s a nie je to platna cesta
         # ide len o random string, citam po bajtoch, extrahuje sa do ./extracted/output.txt
         # Embedded will be just string.
-        elif ArgsParser.__args.secret_message == "":
+        elif cls.__args.secret_message == "":
             sys.exit(0)
         
                 
-    @staticmethod
-    def __check_args() -> None:
+    @classmethod
+    def __check_args(cls) -> None:
         
         # Print HELP if no arguments were given.
         if len(sys.argv) == 1:
-            ArgsParser.__parser.print_help(sys.stderr)
+            cls.__parser.print_help(sys.stderr)
             sys.exit(0)
         
         # Catching exceptions according to parser setup.
         try:
-            ArgsParser.__args = ArgsParser.__parser.parse_args()
+            cls.__args = cls.__parser.parse_args()
         except argparse.ArgumentError:
-            ArgsParser.__eprint("wrong mode or value of argument was (not) given", 2)
+            cls.__eprint("wrong mode or value of argument was (not) given", 2)
             
         # Only for better readability of the following conditions.
-        mode = ArgsParser.__args.mode
-        cover_file = ArgsParser.__args.cover_file
-        stego_file = ArgsParser.__args.stego_file
+        mode = cls.__args.mode
+        cover_file = cls.__args.cover_file
+        stego_file = cls.__args.stego_file
         
         # Check required options according to given mode and validate
         # their values (checking presence of secret message, if
         # required, is not necessary as default value was set).
         if mode == "e" or mode == "embed":
             if cover_file is not None:
-                ArgsParser.__args.cover_file = os.path.abspath(cover_file)
-                ArgsParser.__check_file(ArgsParser.__args.cover_file)
+                cls.__args.cover_file = os.path.abspath(cover_file)
+                cls.__check_file(cls.__args.cover_file)
             else:
-                ArgsParser.__eprint(
+                cls.__eprint(
                     f"cover-file needs to be specified in '{mode}' mode", 100
                     )
                 
-            ArgsParser.__parse_secret_message()
+            cls.__parse_secret_message()
             
         elif mode == "x" or mode == "extract":
             if stego_file is not None:
-                ArgsParser.__args.stego_file = os.path.abspath(stego_file)
-                ArgsParser.__check_file(ArgsParser.__args.stego_file)
+                cls.__args.stego_file = os.path.abspath(stego_file)
+                cls.__check_file(cls.__args.stego_file)
             else:
-                ArgsParser.__eprint(
+                cls.__eprint(
                     f"stego-file needs to be specified in '{mode}' mode", 100
                     )
         
         elif mode == "a" or mode == "analyze":
             if cover_file is not None:
-                ArgsParser.__args.cover_file = os.path.abspath(cover_file)
-                ArgsParser.__check_file(ArgsParser.__args.cover_file)
+                cls.__args.cover_file = os.path.abspath(cover_file)
+                cls.__check_file(cls.__args.cover_file)
             else:
-                ArgsParser.__eprint(
+                cls.__eprint(
                     f"cover-file needs to be specified in '{mode}' mode", 100
                     )
         
         elif mode == "r" or mode == "reset":
             if stego_file is not None:
-                ArgsParser.__args.stego_file = os.path.abspath(stego_file)
-                ArgsParser.__check_file(ArgsParser.__args.stego_file)
+                cls.__args.stego_file = os.path.abspath(stego_file)
+                cls.__check_file(cls.__args.stego_file)
             else:
-                ArgsParser.__eprint(
+                cls.__eprint(
                     f"stego-file needs to be specified in '{mode}' mode", 100
                     )
         
 
-    @staticmethod
-    def parse() -> object:        
-        ArgsParser.__set_parser()
-        ArgsParser.__check_args()
+    @classmethod
+    def parse(cls) -> object:        
+        cls.__set_parser()
+        cls.__check_args()
         
-        return ArgsParser.__args
+        return cls.__args

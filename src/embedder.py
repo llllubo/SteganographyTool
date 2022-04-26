@@ -50,17 +50,17 @@ class Embedder:
         return (b_comp1 + b_comp2)
     
     
-    @staticmethod
-    def encrypt_data(data: bytes) -> bytes:
-        b_key, Embedder.__b_passwd = misc.gen_key_from_passwd()
+    @classmethod
+    def encrypt_data(cls, data: bytes) -> bytes:
+        b_key, cls.__b_passwd = misc.gen_key_from_passwd()
         cipher = Fernet(b_key)
         b_encrypted = cipher.encrypt(data)
         
         return b_encrypted
     
     
-    @staticmethod
-    def xor_data_len(encrypted: bytes) -> bytes:
+    @classmethod
+    def xor_data_len(cls, encrypted: bytes) -> bytes:
         # vracia 32B XORovanu dlzku spravy
         # Must be in bytes, because password is in the bytes as well.
         b_encrypted_len = len(encrypted).to_bytes(misc.SIZE_OF_DATA_LEN, byteorder="little")
@@ -68,11 +68,11 @@ class Embedder:
         print(f"[32B == {len(b_encrypted_len)} -- little] b_encrypted_len: {b_encrypted_len} -> {int.from_bytes(b_encrypted_len, byteorder='little')}")
         
         # Prepare password length ONLY for XOR operation.
-        if len(Embedder.__b_passwd) <= misc.SIZE_OF_DATA_LEN:
-            b_passwd = Embedder.__b_passwd
-            b_passwd += bytes(misc.SIZE_OF_DATA_LEN - len(Embedder.__b_passwd))
+        if len(cls.__b_passwd) <= misc.SIZE_OF_DATA_LEN:
+            b_passwd = cls.__b_passwd
+            b_passwd += bytes(misc.SIZE_OF_DATA_LEN - len(cls.__b_passwd))
         else:
-            b_passwd = Embedder.__b_passwd[:misc.SIZE_OF_DATA_LEN]
+            b_passwd = cls.__b_passwd[:misc.SIZE_OF_DATA_LEN]
 
         # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
         # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
@@ -96,18 +96,18 @@ class Embedder:
         return b_xored_len
     
     
-    @staticmethod
-    def xor_fext(fext: bytes) -> bytes:
+    @classmethod
+    def xor_fext(cls, fext: bytes) -> bytes:
         # vraciam vyXORovany fext ktory ma 8 bajtov.     
 
         # xoruje sa len ak je nejaka extension, inak by sa heslo vyxorovalo do extension (xoroval by som heslo s nulami == heslo).
         if fext != bytes(misc.SIZE_OF_FEXT):
             # Prepare password length ONLY for XOR operation.
-            if len(Embedder.__b_passwd) <= misc.SIZE_OF_FEXT:
-                b_passwd = Embedder.__b_passwd
-                b_passwd += bytes(misc.SIZE_OF_FEXT - len(Embedder.__b_passwd))
+            if len(cls.__b_passwd) <= misc.SIZE_OF_FEXT:
+                b_passwd = cls.__b_passwd
+                b_passwd += bytes(misc.SIZE_OF_FEXT - len(cls.__b_passwd))
             else:
-                b_passwd = Embedder.__b_passwd[:misc.SIZE_OF_FEXT]
+                b_passwd = cls.__b_passwd[:misc.SIZE_OF_FEXT]
             
             # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
             # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..

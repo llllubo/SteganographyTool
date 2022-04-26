@@ -9,18 +9,18 @@ class Extractor:
     __b_key = None
     __b_passwd = None
     
-    @staticmethod
-    def unxor_data_len(xored_len: bytes) -> int:
+    @classmethod
+    def unxor_data_len(cls, xored_len: bytes) -> int:
         # vraciam vyxorovanu dlzku dat ako cislo
         # uz vytvara kluc a pyta heslo
-        Extractor.__b_key, Extractor.__b_passwd = misc.gen_key_from_passwd()
+        cls.__b_key, cls.__b_passwd = misc.gen_key_from_passwd()
         
         # Prepare password length ONLY for XOR operation.
-        if len(Extractor.__b_passwd) <= misc.SIZE_OF_DATA_LEN:
-            b_passwd = Extractor.__b_passwd
-            b_passwd += bytes(misc.SIZE_OF_DATA_LEN - len(Extractor.__b_passwd))
+        if len(cls.__b_passwd) <= misc.SIZE_OF_DATA_LEN:
+            b_passwd = cls.__b_passwd
+            b_passwd += bytes(misc.SIZE_OF_DATA_LEN - len(cls.__b_passwd))
         else:
-            b_passwd = Extractor.__b_passwd[:misc.SIZE_OF_DATA_LEN]
+            b_passwd = cls.__b_passwd[:misc.SIZE_OF_DATA_LEN]
 
         # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
         # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
@@ -44,19 +44,19 @@ class Extractor:
         return int.from_bytes(b_unxored_len, byteorder="little")
     
     
-    @staticmethod
-    def unxor_fext(xored_fext: bytes) -> bytes:
+    @classmethod
+    def unxor_fext(cls, xored_fext: bytes) -> bytes:
         # vraciam unXORovany fext ktory ma 8 bajtov
         
         # xoruje sa len ak je nejaka extension, inak by sa heslo vyxorovalo do extension (xoroval by som heslo s nulami == heslo).
         if xored_fext != bytes(misc.SIZE_OF_FEXT):
             
             # Prepare password length ONLY for XOR operation.
-            if len(Extractor.__b_passwd) <= misc.SIZE_OF_FEXT:
-                b_passwd = Extractor.__b_passwd
-                b_passwd += bytes(misc.SIZE_OF_FEXT - len(Extractor.__b_passwd))
+            if len(cls.__b_passwd) <= misc.SIZE_OF_FEXT:
+                b_passwd = cls.__b_passwd
+                b_passwd += bytes(misc.SIZE_OF_FEXT - len(cls.__b_passwd))
             else:
-                b_passwd = Extractor.__b_passwd[:misc.SIZE_OF_FEXT]
+                b_passwd = cls.__b_passwd[:misc.SIZE_OF_FEXT]
             
             # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
             # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
@@ -84,10 +84,10 @@ class Extractor:
         return xored_fext
     
     
-    @staticmethod
-    def decrypt_data(data: bytes) -> bytes:
+    @classmethod
+    def decrypt_data(cls, data: bytes) -> bytes:
         # vracia desifrovane data
-        cipher = Fernet(Extractor.__b_key)
+        cipher = Fernet(cls.__b_key)
         
         try:
             b_decrypted = cipher.decrypt(data)
@@ -129,8 +129,8 @@ class Extractor:
         return "output" + str(i) + fext
     
     
-    @staticmethod
-    def make_output(data: bytes, fext: bytes) -> None:
+    @classmethod
+    def make_output(cls, data: bytes, fext: bytes) -> None:
         # Ensure that output directory will be present.
         try:
             os.mkdir("./extracted")
@@ -151,7 +151,7 @@ class Extractor:
         if ext != "":
             ext = "." + ext
             
-        fname = Extractor.__create_fname(ext)
+        fname = cls.__create_fname(ext)
         
         # Write extracted content to the file.
         try:

@@ -4,13 +4,20 @@
 class Analyzer:
     
     def __init__(self,
+                 bitness: int,
                  total_instrs: int,
                  useable_instrs: int,
                  cap: int) -> None:
+        self.__bitness = bitness
         self.__total_instrs = total_instrs
         self.__useable_instrs = useable_instrs
         self.__capacity = cap   ## BITS
         
+    
+    @property
+    def bitness(self) -> int:
+        return self.__bitness
+    
         
     @property
     def total_instrs(self) -> int:
@@ -60,7 +67,7 @@ class Analyzer:
         elif method == "ext-sub-nops":
             method = "Combination of extended substitution with NOPs"
         
-        print(f"Executable file:\t{fpath}")
+        print(f"Executable {self.bitness}-bit:\t{fpath}")
         print(f"Steganography method:\t{method}")
         print()
         print(f"All decoded instructions:\t\t\t{self.total_instrs:,}")

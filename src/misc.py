@@ -17,7 +17,7 @@ SIZE_OF_DATA_LEN = 32
 SIZE_OF_FEXT = 8
 
 
-def get_numof_useable_b_from_nop(instr: Instruction, bitness: int) -> int:
+def count_useable_bytes_from_nop(instr: Instruction, bitness: int) -> int:
     # Get number of useable last BITS from any, more than 3 bytes long,
     # NOP. Every multi-byte NOP has changeable only last few bytes.
     # With the number of these bytes, we can calculate their position
