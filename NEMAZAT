@@ -106,14 +106,12 @@ CHECK EVALUATION Z STEGANOGRAPHY FOR EXECUTABLES
 
 ##### STARE KODY (mozno sa este zidu?):
 
-########## a = json.load("./path")
-
 ############### ZAPIS v pripade do NOPov multibytes
 # nulls = 5
-# hex_string = "0x0011223344"
+# hex_string = "0x9876543210"
 # mess = bytes.fromhex(hex_string[2:])
-# # Must compute offset like that (for correctness).
-# offset = selected_instrs[3].foffset + selected_instrs[3].instruction.len - nulls
+# # Must compute offset for multi-byte NOPs like that.
+# offset = potential_instrs[1].foffset + potential_instrs[1].instruction.len - nulls
 
 # try:
 #     fd = open("aa", "r+b")
@@ -121,13 +119,22 @@ CHECK EVALUATION Z STEGANOGRAPHY FOR EXECUTABLES
 #     print("ERROR! ", file=sys.stderr)
 # else:
 #     fd.seek(offset)
+#     # fd.seek(0x1b9b7d)
 #     fd.write(mess)
 #     fd.close()
+################
 
-## nahradit za call
-os.system("objdump -dzFfM intel aa > output_changed")
-# os.system("gcc aa.c -o aa")
-##########
+####### len skusam, lebo dlhe NOPy s prefixmi su zle encodovane
+# try:
+#     fd = open(inputf, "rb")
+# except IOError:
+#     print("ERROR ....")
+#     sys.exit(1000)
+# fd.seek(my_instr.foffset)
+# b_instr = fd.read(my_instr.instruction.len)
+# fd.close()
+# print(f"{b_instr.hex():20}", end="\t")
+#######
 
 ##########
 """"ZISKAVANIE BITOV Z BAJTOV NA POZICIACH"""
