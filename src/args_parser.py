@@ -15,7 +15,8 @@ class ArgsParser():
         cls.__parser = argparse.ArgumentParser(
             usage="""
   %(prog)s MODE -m METHOD [-s SECRET_MESSAGE] [-c COVER_FILE] [-g STEGO_FILE]
-            [-v/--verbose] [-h/--help] [-V/--version]""",
+                         [-o CONFIG_FILE] [-f/--force] [-v/--verbose]
+                         [-h/--help] [-V/--version]""",
             description="""Steganography for Executables
 
   This program embeds and extracts any type of message to given executable.
@@ -61,9 +62,9 @@ or analyze cover file (possible values: 'sub'/
             metavar="METHOD",
             choices=["sub", "instruction-substitution",
                      "ext-sub", "extended-substitution",
-                     "nops", "nops-embedding",
-                     "ext-sub-nops",
-                     "mov"],
+                     "nops", "nops-using",
+                     "mov", "mov-scheduling",
+                     "ext-sub-nops-mov"],
             required=True
             )
         
@@ -97,6 +98,23 @@ to be extracted or reset
             """
             )
         cls.__parser.add_argument(
+            "-o",
+            "--config-file",
+            help="""configuration file (CONFIG_FILE) with informations
+determining encoding while embedding/extracting message
+            """
+            )
+        cls.__parser.add_argument(
+            "-f",
+            "--force",
+            help="""strengthen the selection of potential instructions
+(influence only [extended] substitution of instruction)
+for the purpose of higher capacity (running the program
+can take up to several minutes)
+            """,
+            action="store_true"
+            )
+        cls.__parser.add_argument(
             "-v",
             "--verbose",
             help="""output verbosity while processing
@@ -119,7 +137,8 @@ arguments)""",
         print("usage:", file=sys.stderr)
         print(
             f"  {p.prog} " """MODE -m METHOD [-s SECRET_MESSAGE] [-c COVER_FILE] [-g STEGO_FILE]
-            [-v/--verbose] [-h/--help] [-V/--version]""",
+                         [-o CONFIG_FILE] [-f/--force] [-v/--verbose]
+                         [-h/--help] [-V/--version]""",
             file=sys.stderr
             )
         print(f"{p.prog}: error: {msg}", file=sys.stderr)
@@ -154,8 +173,38 @@ arguments)""",
         # Embedded will be just string.
         elif cls.__args.secret_message == "":
             sys.exit(0)
-        
-                
+            
+            
+    @classmethod
+    def __parse_method(cls, method: str) -> None:
+        if method == "instruction-substitution":
+            cls.__args.method = "sub"
+        elif method == "extended-substitution":
+            cls.__args.method = "ext-sub"
+        elif method == "nops-using":
+            cls.__args.method = "nops"
+        elif method == "mov-scheduling":
+            cls.__args.method = "mov"
+            
+            
+    @classmethod
+    def __set_config_file(cls) -> None:
+        # Configuration file was given by argument.
+        if cls.__args.config_file is not None:
+            cls.__args.config_file = os.path.abspath(cls.__args.config_file)
+            cls.__check_file(cls.__args.config_file)
+        # Configuration file was not given. Taking default one.
+        else:
+            # main.py script was invoked from ../src folder.
+            if os.path.isdir("./config"):    
+                cls.__args.config_file = os.path.abspath("./config/substitution-classes.json")
+                cls.__check_file(cls.__args.config_file)
+            # main.py script was invoked from ./src folder.
+            else:
+                cls.__args.config_file = os.path.abspath("../config/substitution-classes.json")
+                cls.__check_file(cls.__args.config_file)
+
+
     @classmethod
     def __check_args(cls) -> None:
         
@@ -169,7 +218,10 @@ arguments)""",
             cls.__args = cls.__parser.parse_args()
         except argparse.ArgumentError:
             cls.__eprint("wrong mode or value of argument was (not) given", 2)
-            
+        
+        # Only change long form to the short one.
+        cls.__parse_method(cls.__args.method)
+        
         # Only for better readability of the following conditions.
         mode = cls.__args.mode
         cover_file = cls.__args.cover_file
@@ -216,6 +268,10 @@ arguments)""",
                     f"stego-file needs to be specified in '{mode}' mode", 100
                     )
         
+        # Check configuration file and set default file if not given.
+        # Configuration file is needed for every mode.
+        cls.__set_config_file()
+            
 
     @classmethod
     def parse(cls) -> object:        

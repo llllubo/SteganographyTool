@@ -60,11 +60,10 @@ class Selector:
     
     
     @staticmethod
-    def __liveness_flags_detection(
-        all_instrs: list,
-        my_instr: MyInstruction,
-        rflags_to_check: int
-        ) -> bool:
+    def __liveness_flags_detection(all_instrs: list,
+                                   my_instr: MyInstruction,
+                                   rflags_to_check: int,
+                                   force: bool) -> bool:
         ## MUSIM IST PODLA EXECUTION FLOW - PORIESIT SKOKY
         # ^^ prechadzam kym nepride end of function alebo kym nepride instrukcia ktora modifikuje tento znak skor ako pride instrukcia, ktora ho cita.
         # LIVENESS DETECTION OF MODIFIED FLAGS BY REPLACEMENT INSTRUCTION.
@@ -72,9 +71,9 @@ class Selector:
         if rflags_to_check == RflagsBits.NONE:
             return True
         
-        got_op_code = my_instr.instruction.op_code()
-        print("\n\n\n\n\n\n")
-        print(f"{got_op_code.instruction_string:16} | 0b{rflags_to_check:>8b}")
+        # got_op_code = my_instr.instruction.op_code()
+        # print("\n\n\n\n\n\n")
+        # print(f"{got_op_code.instruction_string:16} | 0b{rflags_to_check:>8b}")
         
         all_rflags = (RflagsBits.OF, RflagsBits.SF, RflagsBits.ZF,
                       RflagsBits.AF, RflagsBits.CF, RflagsBits.PF,
@@ -102,10 +101,10 @@ class Selector:
             rflags_read = my_instr.instruction.rflags_read
             rflags_modified = my_instr.instruction.rflags_modified
             op = my_instr.instruction.op_code()
-            print(f"next: {my_instr.ioffset} - {op.instruction_string}, modified: {rflags_modified:b}, read: {rflags_read:b}",)
+            # print(f"next: {my_instr.ioffset} - {op.instruction_string}, modified: {rflags_modified:b}, read: {rflags_read:b}",)
 
             for idx, rflag in enumerate(check_rflags):
-                print(f"rflag: {rflag:b}")
+                # print(f"rflag: {rflag:b}")
                 # Liveness detection of checked flags.
                 if (rflag & rflags_read) != 0:
                     # Instruction tests checked flag.
@@ -113,10 +112,10 @@ class Selector:
                 if (rflag & rflags_modified) != 0:
                     # Instruction modifies checked flag.
                     safe_rflags[idx] = True
-                    print(f"CHECKED rflag: {idx}, {rflag:b}")
+                    # print(f"CHECKED rflag: {idx}, {rflag:b}")
                     # End immediately when all flags are safe.
                     if False not in safe_rflags:
-                        print(f".. all flags are safe -- OK")
+                        # print(f".. all flags are safe -- OK")
                         return True
             
             # Only because of clearer conditions.
@@ -130,50 +129,54 @@ class Selector:
                 # The end of a function.
                 break
             
-            # # CALL|JMP near/far
-            # elif instr.flow_control == FlowControl.CALL or \
-            #     instr.flow_control == FlowControl.UNCONDITIONAL_BRANCH:
+            # CALL|JMP near/far
+            # ONLY if user specify by argument (very time-consuming).
+            elif force and \
+                (
+                    instr.flow_control == FlowControl.CALL or \
+                    instr.flow_control == FlowControl.UNCONDITIONAL_BRANCH
+                ):
                    
-            #     if instr.op_count == 1:
-            #         if instr.op0_kind == OpKind.NEAR_BRANCH16 or \
-            #             instr.op0_kind == OpKind.NEAR_BRANCH32 or \
-            #             instr.op0_kind == OpKind.NEAR_BRANCH64:
+                if instr.op_count == 1:
+                    if instr.op0_kind == OpKind.NEAR_BRANCH16 or \
+                        instr.op0_kind == OpKind.NEAR_BRANCH32 or \
+                        instr.op0_kind == OpKind.NEAR_BRANCH64:
 
-            #             get_target = instr.near_branch_target
+                        get_target = instr.near_branch_target
                     
-            #         elif instr.op0_kind == OpKind.FAR_BRANCH16 or \
-            #             instr.op0_kind == OpKind.FAR_BRANCH32:
+                    elif instr.op0_kind == OpKind.FAR_BRANCH16 or \
+                        instr.op0_kind == OpKind.FAR_BRANCH32:
                         
-            #             get_target = instr.far_branch_selector
+                        get_target = instr.far_branch_selector
                         
-            #         else:
-            #             print("UNSUPPORTED CALL OR UNCOND. BRANCH...")
-            #             return False
+                    else:
+                        # print("UNSUPPORTED CALL OR UNCOND. BRANCH...")
+                        return False
                 
-            #     else:
-            #         print("UNSUPPORTED CALL OR UNCOND. BRANCH")
-            #         return False
+                else:
+                    # print("UNSUPPORTED CALL OR UNCOND. BRANCH")
+                    return False
                     
-            #     print(f"TUTUUUTUTUTUTUTT: 0x{get_target:x}")
-            #     found_instr = [my_instr 
-            #                     for my_instr in all_instrs 
-            #                         if my_instr.instruction.ip == get_target]
+                # print(f"TUTUUUTUTUTUTUTT: 0x{get_target:x}")
+                found_instr = [my_instr 
+                                for my_instr in all_instrs 
+                                    if my_instr.instruction.ip == get_target]
                 
-            #     if found_instr:
-            #         print(f"najdene? {found_instr[0].ioffset} - {found_instr[0].foffset:x}")
-            #         my_instr = found_instr[0]
-            #     else:
-            #         print("nenajdene")
-            #         return False
+                if found_instr:
+                    # print(f"najdene? {found_instr[0].ioffset} - {found_instr[0].foffset:x}")
+                    my_instr = found_instr[0]
+                else:
+                    # print("nenajdene")
+                    return False
             
             else:   
-                print("NOT SUPPORTED JUMP")
+                # print("NOT SUPPORTED JUMP")
                 return False
         
-        print(f".. OK -- end of function: ", end="")
-        for j in check_rflags:
-            print(f"{j:b}, ", end="")
-        print()
+        # print(f".. OK -- end of function: ", end="")
+        # for j in check_rflags:
+        #     print(f"{j:b}, ", end="")
+        # print()
 
         return True
     
@@ -289,6 +292,7 @@ class Selector:
     def select(cls,
                all_my_instrs: list,
                method: str,
+               force: bool,
                analyzer: Analyzer) -> list:
         
         selected_my_instrs = []
@@ -296,17 +300,17 @@ class Selector:
         fnop_indicator = False
         nop6690_indicator = False
         mov_indicator = False
-        cap = 0 ## BITS
+        avg_cap = 0.0       # In BITS
+        min_cap = 0         # In BITS
+        max_cap = 0         # In BITS
         
         for my_instr in all_my_instrs:
             
             instr = my_instr.instruction
             op_code = my_instr.instruction.op_code()
 
-            ############ POROVNAVAM ROVNAKOST DVOCH MOV BITOVO VO FUNKCII,
-            ## MOZE DOJST KU PROBLEMU PRI SPAJANI METOD, KED SA JEDEN MOV ZORADI AJ ZMENI SA MU DIR BIT -- PRETO BY ASI BOLO LEPSIE ZORADOVAT LEXIKOGRAFICKY, NIE PODLA KODU INSTRUKCIE.
+
             if method == "mov" or \
-                method == "mov-scheduling" or \
                 method == "ext-sub-nops-mov":
                 
                 # Two MOVs in a row.
@@ -329,7 +333,9 @@ class Selector:
                             # if next instruction will be MOV,
                             # dependency check will be performed again.
                             mov_indicator = False
-                            cap += 1
+                            avg_cap += 1.0
+                            min_cap += 1
+                            max_cap += 1
                             
                             # print(f".... {prev_mov.ioffset}: {prev_mov.instruction} \t\t {my_instr.ioffset}: {my_instr.instruction}")
                     else:
@@ -341,8 +347,7 @@ class Selector:
 
 
             if method == "nops" or \
-                method == "nops-embedding" or \
-                method == "ext-sub-nops":
+                method == "ext-sub-nops-mov":
                 
                 # 1 byte NOPs 0x90.
                 if op_code.is_nop and instr.len == 1:
@@ -361,7 +366,9 @@ class Selector:
                             my_instr.set_eq_class = "2B-NOP"
                             selected_my_instrs.append(my_instr)
                         
-                            cap += 1#####################
+                            avg_cap += cls.__compute_average_capacity("", 3)
+                            min_cap += 1
+                            max_cap += 2
                         
                         elif nop90_indicator == 2:
                             # 3rd NOP 0x90 detected.
@@ -374,7 +381,14 @@ class Selector:
                             my_instr.set_eq_class = "3B-NOP"
                             selected_my_instrs.append(my_instr)
                             
-                            # cap += 
+                            # Computation must also be returned.
+                            avg_cap -= cls.__compute_average_capacity("", 3)
+                            min_cap -= 1
+                            max_cap -= 2
+                            # Fixed computation.
+                            avg_cap += cls.__compute_average_capacity("", 6)
+                            min_cap += 2
+                            max_cap += 3
                         
                     else:
                         # 1st NOP 0x90 detected.
@@ -391,7 +405,9 @@ class Selector:
                             my_instr.set_eq_class = "3B-NOP"
                             selected_my_instrs.append(my_instr)
                             
-                            # cap += 
+                            avg_cap += cls.__compute_average_capacity("", 6)
+                            min_cap += 2
+                            max_cap += 3
                         
                         elif fnop_indicator:
                             # Detected sequence: 0xd9d0; 0x90.
@@ -404,7 +420,9 @@ class Selector:
                             my_instr.set_eq_class = "3B-NOP"
                             selected_my_instrs.append(my_instr)
                             
-                            # cap += 
+                            avg_cap += cls.__compute_average_capacity("", 6)
+                            min_cap += 2
+                            max_cap += 3
                     
                 # Multi-byte NOP.
                 if op_code.is_nop:
@@ -424,14 +442,18 @@ class Selector:
                             my_instr.set_eq_class = "3B-NOP"
                             selected_my_instrs.append(my_instr)
                             
-                            # cap += 
+                            avg_cap += cls.__compute_average_capacity("", 6)
+                            min_cap += 2
+                            max_cap += 3
                             
                         else:                            
                             # Only one NOP 0x6690 detected.
                             my_instr.set_eq_class = "2B-NOP"
                             selected_my_instrs.append(my_instr)
                             
-                            cap += 2    # Coding 01.
+                            avg_cap += cls.__compute_average_capacity("", 3)
+                            min_cap += 1
+                            max_cap += 2
                             
                         # Reset indicators for a case they are set.
                         nop90_indicator = 0
@@ -448,7 +470,9 @@ class Selector:
                         my_instr.set_eq_class = "3B-NOP"
                         selected_my_instrs.append(my_instr)
                         
-                        cap += 2 ################ OPRAVIT
+                        avg_cap += cls.__compute_average_capacity("", 6)
+                        min_cap += 2
+                        max_cap += 3
                     
                     elif instr.len > 3:
                         # More than 3 bytes long NOP.
@@ -461,10 +485,13 @@ class Selector:
                         my_instr.set_eq_class = ">3B-NOP"
                         selected_my_instrs.append(my_instr)
                         
-                        cap += count_useable_bytes_from_nop(
+                        cap = count_useable_bytes_from_nop(
                             instr,
                             analyzer.bitness
                             )
+                        avg_cap += float(cap)
+                        min_cap += cap
+                        max_cap += cap
                         
                     # Can not reset indicators here all at once, because
                     # this case also cover situation when 0x90 occurs.
@@ -487,14 +514,18 @@ class Selector:
                         my_instr.set_eq_class = "3B-NOP"
                         selected_my_instrs.append(my_instr)
                         
-                        # cap += 
+                        avg_cap += cls.__compute_average_capacity("", 6)
+                        min_cap += 2
+                        max_cap += 3
                         
                     else:                            
                         # Only one FNOP detected.                        
                         my_instr.set_eq_class = "2B-NOP"
                         selected_my_instrs.append(my_instr)
                         
-                        cap += 2    # Coding 00.
+                        avg_cap += cls.__compute_average_capacity("", 3)
+                        min_cap += 1
+                        max_cap += 2
                         
                     # Reset indicators for a case they are set.
                     nop90_indicator = 0
@@ -508,8 +539,7 @@ class Selector:
                         
                         
             if method == "ext-sub" or \
-                method == "extended-substitution" or \
-                method == "ext-sub-nops":
+                method == "ext-sub-nops-mov":
                 
                 # TEST non-acc-(except AH)-r, imm
                 # TEST /0 /1
@@ -522,7 +552,9 @@ class Selector:
                     #     EqClassesProcessor.all_eq_classes['TEST non-accumulator-register']
                     my_instr.set_eq_class = "TEST-non-acc-reg"
                     selected_my_instrs.append(my_instr)
-                    cap += 1
+                    avg_cap += 1.0
+                    min_cap += 1
+                    max_cap += 1
                     
                 ##### pozor v 'm' mozu byt len 32-bit a 64-bit registry
                 ##### TOTO BUDE MAT VACSIU PRIORITU SPOMEDZI EQ CLASSES
@@ -558,7 +590,9 @@ class Selector:
                     #     EqClassesProcessor.all_eq_classes['Swap base-index']
                     my_instr.set_eq_class = "swap-base-index-regs"
                     selected_my_instrs.append(my_instr)
-                    cap += 1
+                    avg_cap += 1.0
+                    min_cap += 1
+                    max_cap += 1
                     
                 # SHL/SAL /4 /6
                 # First operand is always in form r/m and second can
@@ -578,7 +612,9 @@ class Selector:
                     #     EqClassesProcessor.all_eq_classes['SHL/SAL']
                     my_instr.set_eq_class = "shl-sal"
                     selected_my_instrs.append(my_instr)
-                    cap += 1
+                    avg_cap += 1.0
+                    min_cap += 1
+                    max_cap += 1
                     
                 elif analyzer.bitness == 32:
                     # OPCODE = ADD|SUB|ADC|SBB|AND|OR|XOR|CMP
@@ -600,12 +636,14 @@ class Selector:
                         # EqClassesProcessor.all_eq_classes[]
                         my_instr.set_eq_class = "two-opcodes-32bit"
                         selected_my_instrs.append(my_instr)
-                        cap += 1
+                        avg_cap += 1.0
+                        min_cap += 1
+                        max_cap += 1
                         
                 
             if method == "sub" or \
-                method == "instruction-substitution" or \
-                method == "ext-sub-nops":
+                method == "ext-sub" or \
+                method == "ext-sub-nops-mov":
                 ## POZOR KED JE IMM, MOZE BYT PRVY OP. LEN REGISTER,
                 ## NEMUSI BYT R/M
                 ############ VYMENA OPERANDOV ak menim strany r, r/m
@@ -620,7 +658,9 @@ class Selector:
                             
                     my_instr.set_eq_class = "test-and-or"
                     selected_my_instrs.append(my_instr)
-                    cap += 2    # Coding 00, 01
+                    avg_cap += cls.__compute_average_capacity("", 3)
+                    min_cap += 1
+                    max_cap += 2
                 
                 elif re.match(
                         r'AND r/m[0-9]{1,2}, r[0-9]{1,2}',
@@ -630,7 +670,9 @@ class Selector:
                             
                     my_instr.set_eq_class = "test-and-or"
                     selected_my_instrs.append(my_instr)
-                    cap += 1    # Coding 1
+                    avg_cap += cls.__compute_average_capacity("", 3)
+                    min_cap += 1
+                    max_cap += 2
                     
                 ## SUB-XOR CLASS
                 elif re.match(
@@ -645,12 +687,15 @@ class Selector:
                     if cls.__liveness_flags_detection(
                             all_my_instrs,
                             my_instr,
-                            RflagsBits.AF
+                            RflagsBits.AF,
+                            force
                             ):
 
                         my_instr.set_eq_class = "sub-xor"
                         selected_my_instrs.append(my_instr)
-                        cap += 2
+                        avg_cap += 2.0
+                        min_cap += 2
+                        max_cap += 2
    
                 ## ALL CLASSES WITH r/m, r & r, r/m INSTR. VERSIONS.
                 # r/m, r versions of MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB.
@@ -665,7 +710,9 @@ class Selector:
                     # can not cause duplicates.
                     my_instr.set_eq_class = "two-opcodes-r/m-r"
                     selected_my_instrs.append(my_instr)
-                    cap += 1
+                    avg_cap += 1.0
+                    min_cap += 1
+                    max_cap += 1
                     
                 elif re.match(
     r'(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r[0-9]{1,2}, r/m[0-9]{1,2}',
@@ -675,7 +722,9 @@ class Selector:
                     # can not cause duplicates.
                     my_instr.set_eq_class = "two-opcodes-r-r/m"
                     selected_my_instrs.append(my_instr)
-                    cap += 1
+                    avg_cap += 1.0
+                    min_cap += 1
+                    max_cap += 1
                     
                 ## CLASSES ADD & SUB WITH THEIR NEGATED IMMEDIATES.
                 # ADD r/m, imm
@@ -696,13 +745,16 @@ class Selector:
                         if cls.__liveness_flags_detection(
                             all_my_instrs,
                             my_instr,
-                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
+                            force
                             ):
 
                             my_instr.set_eq_class = "add-neg"
                             selected_my_instrs.append(my_instr)
                             ########## nulu nemozem negovat, zachovam ju
-                            cap += 1
+                            avg_cap += 1.0
+                            min_cap += 1
+                            max_cap += 1
                     
                 # SUB r/m, -imm .. NEGATED
                 elif re.match(
@@ -722,12 +774,15 @@ class Selector:
                         if cls.__liveness_flags_detection(
                             all_my_instrs,
                             my_instr,
-                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
+                            force
                             ):
 
                             my_instr.set_eq_class = "add-neg"
                             selected_my_instrs.append(my_instr)
-                            cap += 1
+                            avg_cap += 1.0
+                            min_cap += 1
+                            max_cap += 1
                     
                 # SUB r/m, imm
                 elif re.match(
@@ -747,13 +802,16 @@ class Selector:
                         if cls.__liveness_flags_detection(
                             all_my_instrs,
                             my_instr,
-                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
+                            force
                             ):
 
                             my_instr.set_eq_class = "sub-neg"
                             selected_my_instrs.append(my_instr)
                             ########## nulu nemozem negovat, zachovam ju
-                            cap += 1
+                            avg_cap += 1.0
+                            min_cap += 1
+                            max_cap += 1
                     
                 # ADD r/m, -imm .. NEGATED
                 elif re.match(
@@ -773,15 +831,20 @@ class Selector:
                         if cls.__liveness_flags_detection(
                             all_my_instrs,
                             my_instr,
-                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF
+                            RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
+                            force
                             ):
                             
                             my_instr.set_eq_class = "sub-neg"
                             selected_my_instrs.append(my_instr)
-                            cap += 1
+                            avg_cap += 1.0
+                            min_cap += 1
+                            max_cap += 1
             
         analyzer.set_total_instrs = len(all_my_instrs)
         analyzer.set_useable_instrs = len(selected_my_instrs)
-        analyzer.set_capacity = cap
-        
+        analyzer.set_avg_capacity = avg_cap
+        analyzer.set_min_capacity = min_cap
+        analyzer.set_max_capacity = max_cap
+
         return selected_my_instrs

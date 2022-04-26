@@ -149,7 +149,7 @@ class Disassembler:
                 ######################## KONIEC KONTROLNY VYPIS
                 
                 i += 1
-            print()
+            # print()
                 
         # Close read executable.
         fd.close()

@@ -7,11 +7,15 @@ class Analyzer:
                  bitness: int,
                  total_instrs: int,
                  useable_instrs: int,
-                 cap: int) -> None:
+                 avg_cap: float,
+                 min_cap: int,
+                 max_cap: int) -> None:
         self.__bitness = bitness
         self.__total_instrs = total_instrs
         self.__useable_instrs = useable_instrs
-        self.__capacity = cap   ## BITS
+        self.__avg_capacity = avg_cap   ## BITS
+        self.__min_capacity = min_cap   ## BITS
+        self.__max_capacity = max_cap   ## BITS
         
     
     @property
@@ -40,38 +44,90 @@ class Analyzer:
         
         
     @property
-    def capacity(self) -> int:
-        return self.__capacity
+    def avg_capacity(self) -> float:
+        return self.__avg_capacity
     
     
-    @capacity.setter
-    def set_capacity(self, cap: int) -> None:
-        self.__capacity = cap
+    @avg_capacity.setter
+    def set_avg_capacity(self, avg_cap: float) -> None:
+        self.__avg_capacity = avg_cap
+        
+        
+    @property
+    def min_capacity(self) -> int:
+        return self.__min_capacity
+    
+    
+    @min_capacity.setter
+    def set_min_capacity(self, min_cap: int) -> None:
+        self.__min_capacity = min_cap
+        
+        
+    @property
+    def max_capacity(self) -> int:
+        return self.__max_capacity
+    
+    
+    @max_capacity.setter
+    def set_max_capacity(self, max_cap: int) -> None:
+        self.__max_capacity = max_cap
         
         
     def print_analysis(self, method: str, fpath: str) -> None:
         print(f"STEGANOGRAPHIC ANALYSIS:\n")
         
-        if method == "sub" or \
-           method == "instruction-substitution":
-            method = "Basic substitution"
+        if method == "sub":
+            method = "Basic Substitution"
             
-        elif method == "ext-sub" or \
-             method == "extended-substitution":
-            method = "Extended substitution"
+        elif method == "ext-sub":
+            method = "Extended Substitution"
             
-        elif method == "nops" or \
-             method == "nops-embedding":
-            method = "NOP instructions embedding/extracting"
+        elif method == "nops":
+            method = "NOP Instructions Using"
             
-        elif method == "ext-sub-nops":
-            method = "Combination of extended substitution with NOPs"
+        elif method == "mov":
+            method = "MOV Scheduling"
+            
+        elif method == "ext-sub-nops-mov":
+            method = "Combination of Extended Substitution With NOPs & MOV Scheduling"
         
         print(f"Executable {self.bitness}-bit:\t{fpath}")
         print(f"Steganography method:\t{method}")
         print()
         print(f"All decoded instructions:\t\t\t{self.total_instrs:,}")
         print(f"Potentially useable instructions:\t\t{self.useable_instrs:,}")
-        print(f"Information capacity of given executable:\t{(self.capacity / 8):,} Bytes ({(self.capacity // 8):,} bytes and {(self.capacity % 8)} bits)")
-        print(f"\nSummary:")
-        print(f"\t{(self.useable_instrs/self.total_instrs):.2%} of useable instructions")
+        print(f"Information capacity of given executable:")
+        print()
+        print(f"\tAverage: \t{(self.avg_capacity / 8):12,} Bytes", end="")
+        
+        # For average capacity.
+        b = int(self.avg_capacity // 8)
+        bits = int(self.avg_capacity % 8)
+        if b != 0 and bits != 0:
+            print(f" ({b:,} bytes and {bits:,} bits)")
+        else:
+            print()
+        
+        print(f"\tMinimum: \t{(self.min_capacity / 8):12,} Bytes", end="")
+        # For minimum capacity.
+        b = self.min_capacity // 8
+        bits = self.min_capacity % 8
+        
+        if b != 0 and bits != 0:
+            print(f" ({b:,} bytes and {bits:,} bits)")
+        else:
+            print()
+        
+        print(f"\tMaximum: \t{(self.max_capacity / 8):12,} Bytes", end="")
+        # For maximum capacity.
+        b = int(self.max_capacity // 8)
+        bits = int(self.max_capacity % 8)
+        
+        if b != 0 and bits != 0:
+            print(f" ({b:,} bytes and {bits:,} bits)")
+        else:
+            print()
+        
+        print()
+        print(f"Summary:")
+        print(f"\t{(self.useable_instrs / self.total_instrs):.2%} of useable instructions")

@@ -60,9 +60,9 @@ class Main:
         all_my_instrs, bitness = Disassembler.disassemble(inputf)
         
         # Prepare instances of equivalent classes.
-        EqClassesProcessor.prepare_eq_classes()
-        # print(EqClassesProcessor.all_eq_classes)
-        # return
+        EqClassesProcessor.prepare_eq_classes(args.method, args.config_file)
+        print(EqClassesProcessor.all_eq_classes)
+        return
         
         
         ############### ZAPIS v pripade do NOPov multibytes
@@ -85,11 +85,11 @@ class Main:
         
         
         # Prepare empty Analyzer to be filled by Selector.
-        analyzer = Analyzer(bitness, 0, 0, 0)
+        analyzer = Analyzer(bitness, 0, 0, 0.0, 0, 0)
         potential_my_instrs = \
-            Selector.select(all_my_instrs, args.method, analyzer)
+            Selector.select(all_my_instrs, args.method, args.force, analyzer)
 
-        return
+        # return
     
         ###### KONTROLNY VYPIS
         for my_instr in potential_my_instrs:
@@ -109,7 +109,7 @@ class Main:
 
             got_op_code = my_instr.instruction.op_code()
 
-            print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15} | {my_instr.eq_class}")
+            # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15} | {my_instr.eq_class}")
 
         # print(f"\nNONE: {0x0:08b}\n  OF: {0x1:08b}\n  SF: {0x2:08b}\n  ZF: {0x4:08b}\n  AF: {0x8:08b}\n  CF: {0x10:08b}\n  PF: {0x20:08b}")
         # return
@@ -155,15 +155,15 @@ class Main:
             print(f"len(b_message): {len(b_message)}")
             print(f"b_message: {b_message}")
             
-            #### UROBI SA KONTROLA KAPACITY A VYPISE AK NESTACI
-            if (analyzer.capacity / 8) < len(b_message):
+            # Check if cover file has sufficient capacity and inform.
+            if (analyzer.min_capacity / 8) < len(b_message):
                 
-                answer = input("Capacity of the cover file is not sufficient (the embedding data will be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
+                answer = input("Capacity of the cover file is probably not sufficient (the embedding data can be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
 
                 if answer != "yes" and \
                     answer != "ye" and \
                     answer != "y":
-                    print("Steganography is not applied!")
+                    print("Steganography was not applied!")
                     sys.exit(0)
 
             # vklada sa sprava -- prechod skrz ekviv. triedy atd. podla metody

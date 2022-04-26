@@ -24,38 +24,27 @@ class EqClassesProcessor:
     
     
     @classmethod
-    def prepare_eq_classes(cls) -> None:
+    def prepare_eq_classes(cls, method: str, fconfig: str) -> None:
+        
+        print(fconfig)
         try:
-            fd = open("./substitution-classes.json", "r")
+            fd = open(fconfig, "r")
         except IOError:
-            print(f"ERROR! Can not load configuration file: ", file=sys.stderr)
+            print(f"ERROR! Can not load configuration file: {fconfig}", file=sys.stderr)
             sys.exit(101)
         
         json_obj = json.load(fd)
         fd.close()
         
-        # if method == "ext-sub-nops":
-        #     pass
-        
-        # if method == "nops" or \
-        #     method == "nops-embedding":
-            
-        #     i = 0
-            
-        # elif method == "ext-sub" or \
-        #     method == "extended-substitution":
-            
-        #     i = 1    
-            
-        # elif method == "sub" or \
-        #     method == "instruction-substitution":
-                
-        #     i = 2
-        
         for method_data in json_obj:
-            for eq_classes in method_data['Classes']:
-                cls(
-                    name=eq_classes['Name'],
-                    desc=eq_classes['Description'],
-                    members=eq_classes['Members']
-                )
+            if method == method_data['Method'] or \
+                (
+                    method == "ext-sub" and method_data['Method'] == "sub"
+                ) or \
+                method == "ext-sub-nops-mov":
+                for eq_classes in method_data['Classes']:
+                    cls(
+                        name=eq_classes['Name'],
+                        desc=eq_classes['Description'],
+                        members=eq_classes['Members']
+                    )
