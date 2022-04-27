@@ -2,6 +2,10 @@ import os
 import sys
 import lzma
 from cryptography.fernet import Fernet
+
+from analyzer import Analyzer
+from my_instruction import MyInstruction
+from eq_classes_processor import EqClassesProcessor
 import misc
 
 
@@ -134,3 +138,46 @@ class Embedder:
         print(f"[8B == {len(fext):,} -- little] b_xored_fext: {fext}")
         
         return fext
+    
+    
+    @staticmethod
+    def check_cap(mess_len: int, analyzer: Analyzer) -> None:
+        
+        cap_indicator = ""
+        if mess_len > (analyzer.min_capacity / 8) and \
+            mess_len < (analyzer.max_capacity / 8):
+            cap_indicator = "probably"
+        elif mess_len > (analyzer.max_capacity / 8):
+            cap_indicator = "definitely"
+            
+        # If needed to ask user.
+        if cap_indicator:
+            
+            if cap_indicator == "probably":
+                answer = input("Capacity of the cover file is probably not sufficient (the embedding data can be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
+            elif cap_indicator == "definitely":
+                answer = input("Capacity of the cover file is definitely not sufficient (the embedding data will be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
+
+            if answer != "yes" and \
+                answer != "ye" and \
+                answer != "y":
+                print("Steganography was not applied!")
+                sys.exit(0)
+                
+    
+    @staticmethod
+    def embed(mess: bytes, potential_my_instrs: MyInstruction) -> None:
+        ######## SKONTROLOVAT NAVIAC PRI MOV AJ FLAG, CI BOLO POUZITE AJ SCHEDULING..
+        ### moze byt MOV1 a MOV2 (ked je MOV schedule) ako:
+        ## eq_classes schedule, schedule
+        ## flag, eq_class schedule
+        ## flag, flag
+        
+        for my_instr in potential_my_instrs:
+            
+            for eq_class in EqClassesProcessor.all_eq_classes:
+                
+                if my_instr.eq_class == eq_class:
+                    print(f"{my_instr.eq_class} == {eq_class}")
+                
+                print(f"{eq_class}")

@@ -12,7 +12,7 @@ Project: Bachelor's thesis, BUT FIT Brno
 import sys
 import time
 import re
-from traceback import print_tb
+import itertools
 from iced_x86 import *
 
 from args_parser import ArgsParser
@@ -36,6 +36,7 @@ __status__ = "Prototype" # "Prototype", "Development", or "Production"
 
 
 class Main:
+
 
     @staticmethod
     def run() -> None:
@@ -61,8 +62,9 @@ class Main:
         
         # Prepare instances of equivalent classes.
         EqClassesProcessor.prepare_eq_classes(args.method, args.config_file)
-        print(EqClassesProcessor.all_eq_classes)
-        return
+        # print(EqClassesProcessor.all_eq_classes)
+        # print()
+        # return
         
         
         ############### ZAPIS v pripade do NOPov multibytes
@@ -89,25 +91,30 @@ class Main:
         potential_my_instrs = \
             Selector.select(all_my_instrs, args.method, args.force, analyzer)
 
-        # return
+        for a, b in itertools.combinations(potential_my_instrs, 2):
+            if id(a) == id(b):
+                print(f"kurva..a.. {a.ioffset}, {a.eq_class}, {a.mov_scheduling_flag}")
+                print(f"kurva..b.. {b.ioffset}, {b.eq_class}, {b.mov_scheduling_flag}")
+        
+        return
     
         ###### KONTROLNY VYPIS
-        for my_instr in potential_my_instrs:
+        # for my_instr in potential_my_instrs:
 
-            ##### ENCODING - vracia zlu dlzku dlhych NOPov s prefixami
-            encoder = Encoder(bitness)
-            try:
-                ############ NEPOUZIVAT TUTO DLZKU !!!!!!!!!!!!!!
-                encoder.encode(my_instr.instruction, my_instr.instruction.ip)
-            except ValueError:
-                buffer = ""
-                # print("ERROR encode")
-                # sys.exit(1000)
-            else:
-                buffer = encoder.take_buffer()
-                hexcode = " ".join(re.findall(r'(?:[0-9a-fA-F]{2}|[0-9a-fA-F])', buffer.hex()))
+        #     ##### ENCODING - vracia zlu dlzku dlhych NOPov s prefixami
+        #     encoder = Encoder(bitness)
+        #     try:
+        #         ############ NEPOUZIVAT TUTO DLZKU !!!!!!!!!!!!!!
+        #         encoder.encode(my_instr.instruction, my_instr.instruction.ip)
+        #     except ValueError:
+        #         buffer = ""
+        #         # print("ERROR encode")
+        #         # sys.exit(1000)
+        #     else:
+        #         buffer = encoder.take_buffer()
+        #         hexcode = " ".join(re.findall(r'(?:[0-9a-fA-F]{2}|[0-9a-fA-F])', buffer.hex()))
 
-            got_op_code = my_instr.instruction.op_code()
+        #     got_op_code = my_instr.instruction.op_code()
 
             # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15} | {my_instr.eq_class}")
 
@@ -151,24 +158,19 @@ class Main:
             # Get all parts of data into the one.
             b_message = b_xored_len + b_xored_fext + b_encrypted
             
-            print(f"CAPACITY: {analyzer.capacity}")
+            print(f"MIN CAPACITY: {analyzer.min_capacity / 8}")
+            print(f"MAX CAPACITY: {analyzer.max_capacity / 8}")
             print(f"len(b_message): {len(b_message)}")
             print(f"b_message: {b_message}")
-            
-            # Check if cover file has sufficient capacity and inform.
-            if (analyzer.min_capacity / 8) < len(b_message):
-                
-                answer = input("Capacity of the cover file is probably not sufficient (the embedding data can be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
 
-                if answer != "yes" and \
-                    answer != "ye" and \
-                    answer != "y":
-                    print("Steganography was not applied!")
-                    sys.exit(0)
+            # Check if cover file has sufficient capacity and inform.
+            # Function can exit program if required by user.
+            Embedder.check_cap(len(b_message), analyzer)
 
             # vklada sa sprava -- prechod skrz ekviv. triedy atd. podla metody
+            Embedder.embed(b_message, potential_my_instrs)
             
-            print()
+            print("---------------------------------------------------")
             
             ############extrakcia
             

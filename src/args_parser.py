@@ -189,6 +189,9 @@ arguments)""",
             
     @classmethod
     def __set_config_file(cls) -> None:
+        # ak bude script spustany z inej zlozky ako src ci parent, bude
+        # musiet byt zadany config file ze argument, inak chyba.
+        
         # Configuration file was given by argument.
         if cls.__args.config_file is not None:
             cls.__args.config_file = os.path.abspath(cls.__args.config_file)
@@ -197,13 +200,13 @@ arguments)""",
         else:
             # main.py script was invoked from ../src folder.
             if os.path.isdir("./config"):    
-                cls.__args.config_file = os.path.abspath("./config/substitution-classes.json")
+                cls.__args.config_file = os.path.abspath("./config/eq-classes.json")
                 cls.__check_file(cls.__args.config_file)
             # main.py script was invoked from ./src folder.
             else:
-                cls.__args.config_file = os.path.abspath("../config/substitution-classes.json")
+                cls.__args.config_file = os.path.abspath("../config/eq-classes.json")
                 cls.__check_file(cls.__args.config_file)
-
+                
 
     @classmethod
     def __check_args(cls) -> None:

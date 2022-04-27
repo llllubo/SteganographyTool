@@ -13,9 +13,9 @@ class Analyzer:
         self.__bitness = bitness
         self.__total_instrs = total_instrs
         self.__useable_instrs = useable_instrs
-        self.__avg_capacity = avg_cap   ## BITS
-        self.__min_capacity = min_cap   ## BITS
-        self.__max_capacity = max_cap   ## BITS
+        self.__avg_capacity = avg_cap   # In BITS
+        self.__min_capacity = min_cap   # In BITS
+        self.__max_capacity = max_cap   # In BITS
         
     
     @property
@@ -89,7 +89,7 @@ class Analyzer:
             method = "MOV Scheduling"
             
         elif method == "ext-sub-nops-mov":
-            method = "Combination of Extended Substitution With NOPs & MOV Scheduling"
+            method = "Combination of Extended Substitution with NOPs & MOV Scheduling"
         
         print(f"Executable {self.bitness}-bit:\t{fpath}")
         print(f"Steganography method:\t{method}")
@@ -103,8 +103,10 @@ class Analyzer:
         # For average capacity.
         b = int(self.avg_capacity // 8)
         bits = int(self.avg_capacity % 8)
-        if b != 0 and bits != 0:
+        if b > 0 and bits > 0:
             print(f" ({b:,} bytes and {bits:,} bits)")
+        elif b == 0 and bits > 0:
+            print(f" ({bits:,} bits)")
         else:
             print()
         
@@ -113,8 +115,10 @@ class Analyzer:
         b = self.min_capacity // 8
         bits = self.min_capacity % 8
         
-        if b != 0 and bits != 0:
+        if b > 0 and bits > 0:
             print(f" ({b:,} bytes and {bits:,} bits)")
+        elif b == 0 and bits > 0:
+            print(f" ({bits:,} bits)")
         else:
             print()
         
@@ -122,9 +126,11 @@ class Analyzer:
         # For maximum capacity.
         b = int(self.max_capacity // 8)
         bits = int(self.max_capacity % 8)
-        
-        if b != 0 and bits != 0:
+
+        if b > 0 and bits > 0:
             print(f" ({b:,} bytes and {bits:,} bits)")
+        elif b == 0 and bits > 0:
+            print(f" ({bits:,} bits)")
         else:
             print()
         

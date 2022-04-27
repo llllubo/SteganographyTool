@@ -10,15 +10,6 @@ from eq_classes_processor import EqClassesProcessor
 
 class Selector:
     
-    ############################## n pojde prec a vypocita sa
-    @staticmethod
-    def __compute_average_capacity(eq_class: str, n: int) -> int:
-        # If within one Equivalent Class is number of members not equal
-        # to Power of 2, then only average capacity can be computed as
-        # real capacity depend on exact occurence of particular members
-        # from class.
-        return math.ceil(math.log2(n)-1) + ( n - pow(2, math.ceil(math.log2(n) - 1)) ) / ( pow(2, math.ceil(math.log2(n) - 1)) )
-    
     
     @staticmethod
     def __not_acc_reg(instr: Instruction) -> bool:
@@ -45,8 +36,8 @@ class Selector:
         # reg_to_str = create_enum_dict(Register)
         
         if instr.op_kind(operand) == OpKind.MEMORY and \
-            instr.memory_base != 0 and \
-            instr.memory_index != 0 and \
+            instr.memory_base != Register.NONE and \
+            instr.memory_index != Register.NONE and \
             instr.memory_base != instr.memory_index and \
             instr.memory_index_scale == 1:
             # print("..")
@@ -63,7 +54,7 @@ class Selector:
     def __liveness_flags_detection(all_instrs: list,
                                    my_instr: MyInstruction,
                                    rflags_to_check: int,
-                                   force: bool) -> bool:
+                                   force_flag: bool) -> bool:
         ## MUSIM IST PODLA EXECUTION FLOW - PORIESIT SKOKY
         # ^^ prechadzam kym nepride end of function alebo kym nepride instrukcia ktora modifikuje tento znak skor ako pride instrukcia, ktora ho cita.
         # LIVENESS DETECTION OF MODIFIED FLAGS BY REPLACEMENT INSTRUCTION.
@@ -131,7 +122,7 @@ class Selector:
             
             # CALL|JMP near/far
             # ONLY if user specify by argument (very time-consuming).
-            elif force and \
+            elif force_flag and \
                 (
                     instr.flow_control == FlowControl.CALL or \
                     instr.flow_control == FlowControl.UNCONDITIONAL_BRANCH
@@ -288,17 +279,24 @@ class Selector:
         return True
     
     
+    @staticmethod
+    def __set_eq_class(instr: MyInstruction, eq_class_name: str) -> None:
+        for obj_eq_class in EqClassesProcessor.all_eq_classes:
+            if obj_eq_class.class_name == eq_class_name:
+                instr.set_eq_class = obj_eq_class
+    
+    
     @classmethod
     def select(cls,
                all_my_instrs: list,
                method: str,
-               force: bool,
+               force_flag: bool,
                analyzer: Analyzer) -> list:
         
         selected_my_instrs = []
         nop90_indicator = 0
-        fnop_indicator = False
         nop6690_indicator = False
+        fnop_indicator = False
         mov_indicator = False
         avg_cap = 0.0       # In BITS
         min_cap = 0         # In BITS
@@ -323,9 +321,22 @@ class Selector:
                         if cls.__check_independency(prev_mov.instruction,
                                                     instr,
                                                     analyzer.bitness):
-                            prev_mov.set_eq_class = "mov-scheduling"
-                            selected_my_instrs.append(prev_mov)
-                            my_instr.set_eq_class = "mov-scheduling"
+                            
+                            if prev_mov.eq_class is not None and \
+                                prev_mov.eq_class.class_name == "MOV":
+                                # Previous MOV has already got eq_class
+                                # and also was selected.
+                                prev_mov.set_mov_scheduling_flag = True
+                                
+                            else:
+                                # Previous MOV has not any eq_class and
+                                # was not selected yet.
+                                cls.__set_eq_class(prev_mov, "MOV Scheduling")
+                                selected_my_instrs.append(prev_mov)
+                            
+                            # Current MOV will be checked similarly in
+                            # MOV equivalent class.
+                            cls.__set_eq_class(my_instr, "MOV Scheduling")
                             selected_my_instrs.append(my_instr)
                             
                             # Reset indicator only if MOV instructions
@@ -333,11 +344,13 @@ class Selector:
                             # if next instruction will be MOV,
                             # dependency check will be performed again.
                             mov_indicator = False
-                            avg_cap += 1.0
-                            min_cap += 1
-                            max_cap += 1
                             
-                            # print(f".... {prev_mov.ioffset}: {prev_mov.instruction} \t\t {my_instr.ioffset}: {my_instr.instruction}")
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
+                            
+                            # print(f".. {prev_mov.ioffset}: {prev_mov.instruction} \t\t {my_instr.ioffset}: {my_instr.instruction}")
                     else:
                         # Set indicator.
                         mov_indicator = True
@@ -360,15 +373,16 @@ class Selector:
                             nop90_indicator = 2
                             
                             prev_nop = all_my_instrs[my_instr.ioffset - 1]
-                            prev_nop.set_eq_class = "2B-NOP"
+                            cls.__set_eq_class(prev_nop, "2 Bytes Long NOP")
                             selected_my_instrs.append(prev_nop)
                             
-                            my_instr.set_eq_class = "2B-NOP"
+                            cls.__set_eq_class(my_instr, "2 Bytes Long NOP")
                             selected_my_instrs.append(my_instr)
                         
-                            avg_cap += cls.__compute_average_capacity("", 3)
-                            min_cap += 1
-                            max_cap += 2
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                         
                         elif nop90_indicator == 2:
                             # 3rd NOP 0x90 detected.
@@ -376,19 +390,22 @@ class Selector:
                             # Reset indicator.
                             nop90_indicator = 0
                             
-                            selected_my_instrs[-2].set_eq_class = "3B-NOP"
-                            selected_my_instrs[-1].set_eq_class = "3B-NOP"
-                            my_instr.set_eq_class = "3B-NOP"
+                            # Computation must also be returned.
+                            avg_cap -= selected_my_instrs[-1].eq_class.avg_cap
+                            min_cap -= selected_my_instrs[-1].eq_class.min_cap
+                            max_cap -= selected_my_instrs[-1].eq_class.max_cap
+                            
+                            cls.__set_eq_class(
+                                selected_my_instrs[-2], "3 Bytes Long NOP")
+                            cls.__set_eq_class(
+                                selected_my_instrs[-1], "3 Bytes Long NOP")
+                            cls.__set_eq_class(my_instr, "3 Bytes Long NOP")
                             selected_my_instrs.append(my_instr)
                             
-                            # Computation must also be returned.
-                            avg_cap -= cls.__compute_average_capacity("", 3)
-                            min_cap -= 1
-                            max_cap -= 2
-                            # Fixed computation.
-                            avg_cap += cls.__compute_average_capacity("", 6)
-                            min_cap += 2
-                            max_cap += 3
+                            # Fix computation.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                         
                     else:
                         # 1st NOP 0x90 detected.
@@ -401,13 +418,20 @@ class Selector:
                             nop90_indicator = 0
                             nop6690_indicator = False
 
-                            selected_my_instrs[-1].set_eq_class = "3B-NOP"
-                            my_instr.set_eq_class = "3B-NOP"
+                            # Computation must also be returned.
+                            avg_cap -= selected_my_instrs[-1].eq_class.avg_cap
+                            min_cap -= selected_my_instrs[-1].eq_class.min_cap
+                            max_cap -= selected_my_instrs[-1].eq_class.max_cap
+                            
+                            cls.__set_eq_class(
+                                selected_my_instrs[-1], "3 Bytes Long NOP")
+                            cls.__set_eq_class(my_instr, "3 Bytes Long NOP")
                             selected_my_instrs.append(my_instr)
                             
-                            avg_cap += cls.__compute_average_capacity("", 6)
-                            min_cap += 2
-                            max_cap += 3
+                            # Fix computation.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                         
                         elif fnop_indicator:
                             # Detected sequence: 0xd9d0; 0x90.
@@ -416,13 +440,20 @@ class Selector:
                             nop90_indicator = 0
                             fnop_indicator = False
                             
-                            selected_my_instrs[-1].set_eq_class = "3B-NOP"
-                            my_instr.set_eq_class = "3B-NOP"
+                            # Computation must also be returned.
+                            avg_cap -= selected_my_instrs[-1].eq_class.avg_cap
+                            min_cap -= selected_my_instrs[-1].eq_class.min_cap
+                            max_cap -= selected_my_instrs[-1].eq_class.max_cap
+                            
+                            cls.__set_eq_class(
+                                selected_my_instrs[-1], "3 Bytes Long NOP")
+                            cls.__set_eq_class(my_instr, "3 Bytes Long NOP")
                             selected_my_instrs.append(my_instr)
                             
-                            avg_cap += cls.__compute_average_capacity("", 6)
-                            min_cap += 2
-                            max_cap += 3
+                            # Fix computation.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                     
                 # Multi-byte NOP.
                 if op_code.is_nop:
@@ -437,23 +468,25 @@ class Selector:
                             nop6690_indicator = False
                             
                             prev_nop = all_my_instrs[my_instr.ioffset - 1]
-                            prev_nop.set_eq_class = "3B-NOP"
+                            cls.__set_eq_class(prev_nop, "3 Bytes Long NOP")
                             selected_my_instrs.append(prev_nop)
-                            my_instr.set_eq_class = "3B-NOP"
+                            cls.__set_eq_class(my_instr, "3 Bytes Long NOP")
                             selected_my_instrs.append(my_instr)
                             
-                            avg_cap += cls.__compute_average_capacity("", 6)
-                            min_cap += 2
-                            max_cap += 3
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                             
                         else:                            
                             # Only one NOP 0x6690 detected.
-                            my_instr.set_eq_class = "2B-NOP"
+                            cls.__set_eq_class(my_instr, "2 Bytes Long NOP")
                             selected_my_instrs.append(my_instr)
                             
-                            avg_cap += cls.__compute_average_capacity("", 3)
-                            min_cap += 1
-                            max_cap += 2
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                             
                         # Reset indicators for a case they are set.
                         nop90_indicator = 0
@@ -467,12 +500,13 @@ class Selector:
                         nop6690_indicator = False
                         fnop_indicator = False
                         
-                        my_instr.set_eq_class = "3B-NOP"
+                        cls.__set_eq_class(my_instr, "3 Bytes Long NOP")
                         selected_my_instrs.append(my_instr)
                         
-                        avg_cap += cls.__compute_average_capacity("", 6)
-                        min_cap += 2
-                        max_cap += 3
+                        # Compute capacities.
+                        avg_cap += my_instr.eq_class.avg_cap
+                        min_cap += my_instr.eq_class.min_cap
+                        max_cap += my_instr.eq_class.max_cap
                     
                     elif instr.len > 3:
                         # More than 3 bytes long NOP.
@@ -482,9 +516,10 @@ class Selector:
                         nop6690_indicator = False
                         fnop_indicator = False
                         
-                        my_instr.set_eq_class = ">3B-NOP"
+                        cls.__set_eq_class(my_instr, ">3 Bytes Long NOP")
                         selected_my_instrs.append(my_instr)
                         
+                        # Compute capacities.
                         cap = count_useable_bytes_from_nop(
                             instr,
                             analyzer.bitness
@@ -493,7 +528,7 @@ class Selector:
                         min_cap += cap
                         max_cap += cap
                         
-                    # Can not reset indicators here all at once, because
+                    # Can not reset indicators all at once here, because
                     # this case also cover situation when 0x90 occurs.
                         
                 # 2 bytes long FNOP 0xd9d0 is not included in 'is_nop',
@@ -509,23 +544,26 @@ class Selector:
                         fnop_indicator = False
                         
                         prev_nop = all_my_instrs[my_instr.ioffset - 1]
-                        prev_nop.set_eq_class = "3B-NOP"
+                        cls.__set_eq_class(prev_nop, "3 Bytes Long NOP")
                         selected_my_instrs.append(prev_nop)
-                        my_instr.set_eq_class = "3B-NOP"
+                        
+                        cls.__set_eq_class(my_instr, "3 Bytes Long NOP")
                         selected_my_instrs.append(my_instr)
                         
-                        avg_cap += cls.__compute_average_capacity("", 6)
-                        min_cap += 2
-                        max_cap += 3
+                        # Compute capacities.
+                        avg_cap += my_instr.eq_class.avg_cap
+                        min_cap += my_instr.eq_class.min_cap
+                        max_cap += my_instr.eq_class.max_cap
                         
                     else:                            
                         # Only one FNOP detected.                        
-                        my_instr.set_eq_class = "2B-NOP"
+                        cls.__set_eq_class(my_instr, "2 Bytes Long NOP")
                         selected_my_instrs.append(my_instr)
                         
-                        avg_cap += cls.__compute_average_capacity("", 3)
-                        min_cap += 1
-                        max_cap += 2
+                        # Compute capacities.
+                        avg_cap += my_instr.eq_class.avg_cap
+                        min_cap += my_instr.eq_class.min_cap
+                        max_cap += my_instr.eq_class.max_cap
                         
                     # Reset indicators for a case they are set.
                     nop90_indicator = 0
@@ -541,20 +579,20 @@ class Selector:
             if method == "ext-sub" or \
                 method == "ext-sub-nops-mov":
                 
-                # TEST non-acc-(except AH)-r, imm
+                # TEST non-acc-(except AH)-reg, imm
                 # TEST /0 /1
                 if re.match(
                         r'TEST [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}',
                         op_code.instruction_string
                     ) and cls.__not_acc_reg(instr):
                     
-                    # my_instr.set_eq_class = \
-                    #     EqClassesProcessor.all_eq_classes['TEST non-accumulator-register']
-                    my_instr.set_eq_class = "TEST-non-acc-reg"
+                    cls.__set_eq_class(my_instr, "TEST non-accumulator register")
                     selected_my_instrs.append(my_instr)
-                    avg_cap += 1.0
-                    min_cap += 1
-                    max_cap += 1
+                    
+                    # Compute capacities.
+                    avg_cap += my_instr.eq_class.avg_cap
+                    min_cap += my_instr.eq_class.min_cap
+                    max_cap += my_instr.eq_class.max_cap
                     
                 ##### pozor v 'm' mozu byt len 32-bit a 64-bit registry
                 ##### TOTO BUDE MAT VACSIU PRIORITU SPOMEDZI EQ CLASSES
@@ -564,9 +602,9 @@ class Selector:
                 # OPCODE m, r/imm
                 # OPCODE r, m
                 # BASE-INDEX swap while SCALE is 1.
-                # This class has higher priority over class 'shl-sal'
+                # This class has higher priority over class 'SHL/SAL'
                 # and, in mode 'ext-sub-nops', also over classes
-                # 'add-neg' and 'sub-neg'.
+                # 'ADD negated' and 'SUB negated'.
                 elif (   # OPCODE Memory, Register.
                     re.match(
                         r'.* r/m[0-9]{1,2}, r[0-9]{1,2}',
@@ -586,13 +624,13 @@ class Selector:
                     ) and cls.__can_swap(instr, 1)
                 ):
                     
-                    # my_instr.set_eq_class = \
-                    #     EqClassesProcessor.all_eq_classes['Swap base-index']
-                    my_instr.set_eq_class = "swap-base-index-regs"
+                    cls.__set_eq_class(my_instr, "Swap base-index registers")
                     selected_my_instrs.append(my_instr)
-                    avg_cap += 1.0
-                    min_cap += 1
-                    max_cap += 1
+                    
+                    # Compute capacities.
+                    avg_cap += my_instr.eq_class.avg_cap
+                    min_cap += my_instr.eq_class.min_cap
+                    max_cap += my_instr.eq_class.max_cap
                     
                 # SHL/SAL /4 /6
                 # First operand is always in form r/m and second can
@@ -608,13 +646,13 @@ class Selector:
                     # This class has lower priority than class
                     # 'swap-base-index'.
                     
-                    # my_instr.set_eq_class = \
-                    #     EqClassesProcessor.all_eq_classes['SHL/SAL']
-                    my_instr.set_eq_class = "shl-sal"
+                    cls.__set_eq_class(my_instr, "SHL/SAL")
                     selected_my_instrs.append(my_instr)
-                    avg_cap += 1.0
-                    min_cap += 1
-                    max_cap += 1
+                    
+                    # Compute capacities.
+                    avg_cap += my_instr.eq_class.avg_cap
+                    min_cap += my_instr.eq_class.min_cap
+                    max_cap += my_instr.eq_class.max_cap
                     
                 elif analyzer.bitness == 32:
                     # OPCODE = ADD|SUB|ADC|SBB|AND|OR|XOR|CMP
@@ -623,22 +661,26 @@ class Selector:
                     # AL register appears individually in mnemonics, so
                     # do not have to be checked in r/m8.
                     if re.match(
-                            r'(:?ADD|SUB|ADC|SBB|AND|OR|XOR|CMP) r/m8, imm8',
+                            r'(?:ADD|SUB|ADC|SBB|AND|OR|XOR|CMP) r/m8, imm8',
                             op_code.instruction_string
                     ):
                         # This has affect, in 32-bit mode, on classes
-                        # 'add-neg' and 'sub-neg'. 
-                        # This has lower priority than class 'swap-base-
-                        # index', but higher than classes 'add-neg' and
-                        # 'sub-neg'.
+                        # 'ADD negated' and 'SUB negated'. 
+                        # This has lower priority than class 'Swap base-
+                        # index registers', but higher than classes
+                        # 'ADD negated' and 'SUB negated'.
                         
-                        # my_instr.set_eq_class = \
-                        # EqClassesProcessor.all_eq_classes[]
-                        my_instr.set_eq_class = "two-opcodes-32bit"
+                        mnemo = op_code.instruction_string[:3]
+                        if mnemo == "OR ":
+                            mnemo = "OR"
+                        
+                        cls.__set_eq_class(my_instr, mnemo + " 32-bit")
                         selected_my_instrs.append(my_instr)
-                        avg_cap += 1.0
-                        min_cap += 1
-                        max_cap += 1
+                        
+                        # Compute capacities.
+                        avg_cap += my_instr.eq_class.avg_cap
+                        min_cap += my_instr.eq_class.min_cap
+                        max_cap += my_instr.eq_class.max_cap
                         
                 
             if method == "sub" or \
@@ -648,33 +690,38 @@ class Selector:
                 ## NEMUSI BYT R/M
                 ############ VYMENA OPERANDOV ak menim strany r, r/m
 
-                ## CLASS 'tao'.
-                # TEST r/m, r (TEST r, r\m does not exist).
+                ## CLASS TEST/AND/OR.
+                # TEST r, r\m does not exist.
                 if re.match(
-                        r'(?:TEST|OR) r/m[0-9]{1,2}, r[0-9]{1,2}',
+                        r'TEST r/m[0-9]{1,2}, r[0-9]{1,2}',
                         op_code.instruction_string
                     ) and instr.op0_kind == OpKind.REGISTER and \
                         instr.op0_register == instr.op1_register:
-                            
-                    my_instr.set_eq_class = "test-and-or"
-                    selected_my_instrs.append(my_instr)
-                    avg_cap += cls.__compute_average_capacity("", 3)
-                    min_cap += 1
-                    max_cap += 2
-                
-                elif re.match(
-                        r'AND r/m[0-9]{1,2}, r[0-9]{1,2}',
-                        op_code.instruction_string
-                    ) and instr.op0_kind == OpKind.REGISTER and \
-                        instr.op0_register == instr.op1_register:
-                            
-                    my_instr.set_eq_class = "test-and-or"
-                    selected_my_instrs.append(my_instr)
-                    avg_cap += cls.__compute_average_capacity("", 3)
-                    min_cap += 1
-                    max_cap += 2
                     
-                ## SUB-XOR CLASS
+                    cls.__set_eq_class(my_instr, "TEST/AND/OR")
+                    selected_my_instrs.append(my_instr)
+                    
+                    # Compute capacities.
+                    avg_cap += my_instr.eq_class.avg_cap
+                    min_cap += my_instr.eq_class.min_cap
+                    max_cap += my_instr.eq_class.max_cap
+                    
+                elif re.match(
+                        r'(?:AND|OR) (?:r|r/m)[0-9]{1,2}, (?:r/m|r)[0-9]{1,2}',
+                        op_code.instruction_string
+                    ) and instr.op0_kind == OpKind.REGISTER and \
+                        instr.op1_kind == OpKind.REGISTER and \
+                        instr.op0_register == instr.op1_register:
+                    
+                    cls.__set_eq_class(my_instr, "TEST/AND/OR")
+                    selected_my_instrs.append(my_instr)
+                    
+                    # Compute capacities.
+                    avg_cap += my_instr.eq_class.avg_cap
+                    min_cap += my_instr.eq_class.min_cap
+                    max_cap += my_instr.eq_class.max_cap
+                    
+                ## CLASS SUB/XOR.
                 elif re.match(
                         r'(?:SUB|XOR) (?:r/m|r)[0-9]{1,2}, (?:r|r/m)[0-9]{1,2}',
                         op_code.instruction_string
@@ -688,43 +735,74 @@ class Selector:
                             all_my_instrs,
                             my_instr,
                             RflagsBits.AF,
-                            force
+                            force_flag
                             ):
 
-                        my_instr.set_eq_class = "sub-xor"
+                        cls.__set_eq_class(my_instr, "SUB/XOR")
                         selected_my_instrs.append(my_instr)
-                        avg_cap += 2.0
-                        min_cap += 2
-                        max_cap += 2
+                        
+                        # Compute capacities.
+                        avg_cap += my_instr.eq_class.avg_cap
+                        min_cap += my_instr.eq_class.min_cap
+                        max_cap += my_instr.eq_class.max_cap
    
                 ## ALL CLASSES WITH r/m, r & r, r/m INSTR. VERSIONS.
                 # r/m, r versions of MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB.
                 # AND and OR are in the previous 'if' as well, because
-                # their priority belonging is to the class where TEST,
-                # AND and OR are together.
+                # their priority is to belong to the class TEST/AND/OR.
                 elif re.match(
     r'(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r/m[0-9]{1,2}, r[0-9]{1,2}',
                         op_code.instruction_string
                 ) and instr.op0_kind == OpKind.REGISTER:
-                    # Do not to be check, as previous 'if' statement
-                    # can not cause duplicates.
-                    my_instr.set_eq_class = "two-opcodes-r/m-r"
-                    selected_my_instrs.append(my_instr)
-                    avg_cap += 1.0
-                    min_cap += 1
-                    max_cap += 1
+                    
+                    mnemo = op_code.instruction_string[:3]
+                        
+                    if mnemo == "MOV" and \
+                        my_instr.eq_class is not None and \
+                        my_instr.eq_class.class_name == "MOV Scheduling":
+                        # MOV has already been detected for ordering.
+                        cls.__set_eq_class(my_instr, mnemo)
+                        my_instr.set_mov_scheduling_flag = True
+                        # print("PROBLEM1")
+                        
+                    else:
+                        if mnemo == "OR ":
+                            mnemo = "OR"
+                        
+                        cls.__set_eq_class(my_instr, mnemo)
+                        selected_my_instrs.append(my_instr)
+                    
+                    # Compute capacities.
+                    avg_cap += my_instr.eq_class.avg_cap
+                    min_cap += my_instr.eq_class.min_cap
+                    max_cap += my_instr.eq_class.max_cap
                     
                 elif re.match(
     r'(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r[0-9]{1,2}, r/m[0-9]{1,2}',
                         op_code.instruction_string
                     ) and instr.op1_kind == OpKind.REGISTER:
-                    # Do not to be check, as previous 'if' statement
-                    # can not cause duplicates.
-                    my_instr.set_eq_class = "two-opcodes-r-r/m"
-                    selected_my_instrs.append(my_instr)
-                    avg_cap += 1.0
-                    min_cap += 1
-                    max_cap += 1
+                    
+                    mnemo = op_code.instruction_string[:3]
+                    
+                    if mnemo == "MOV" and \
+                        my_instr.eq_class is not None and \
+                        my_instr.eq_class.class_name == "MOV Scheduling":
+                        # MOV is already detected for ordering.
+                        cls.__set_eq_class(my_instr, mnemo)
+                        my_instr.set_mov_scheduling_flag = True
+                        # print("PROBLEM2")
+                        
+                    else:
+                        if mnemo == "OR ":
+                            mnemo = "OR"
+                        
+                        cls.__set_eq_class(my_instr, mnemo)
+                        selected_my_instrs.append(my_instr)
+                    
+                    # Compute capacities.
+                    avg_cap += my_instr.eq_class.avg_cap
+                    min_cap += my_instr.eq_class.min_cap
+                    max_cap += my_instr.eq_class.max_cap
                     
                 ## CLASSES ADD & SUB WITH THEIR NEGATED IMMEDIATES.
                 # ADD r/m, imm
@@ -746,15 +824,17 @@ class Selector:
                             all_my_instrs,
                             my_instr,
                             RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
-                            force
+                            force_flag
                             ):
-
-                            my_instr.set_eq_class = "add-neg"
+                            
+                            cls.__set_eq_class(my_instr, "ADD negated")
                             selected_my_instrs.append(my_instr)
                             ########## nulu nemozem negovat, zachovam ju
-                            avg_cap += 1.0
-                            min_cap += 1
-                            max_cap += 1
+                            
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                     
                 # SUB r/m, -imm .. NEGATED
                 elif re.match(
@@ -775,14 +855,16 @@ class Selector:
                             all_my_instrs,
                             my_instr,
                             RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
-                            force
+                            force_flag
                             ):
 
-                            my_instr.set_eq_class = "add-neg"
+                            cls.__set_eq_class(my_instr, "ADD negated")
                             selected_my_instrs.append(my_instr)
-                            avg_cap += 1.0
-                            min_cap += 1
-                            max_cap += 1
+                            
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                     
                 # SUB r/m, imm
                 elif re.match(
@@ -803,15 +885,17 @@ class Selector:
                             all_my_instrs,
                             my_instr,
                             RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
-                            force
+                            force_flag
                             ):
 
-                            my_instr.set_eq_class = "sub-neg"
+                            cls.__set_eq_class(my_instr, "SUB negated")
                             selected_my_instrs.append(my_instr)
                             ########## nulu nemozem negovat, zachovam ju
-                            avg_cap += 1.0
-                            min_cap += 1
-                            max_cap += 1
+                            
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
                     
                 # ADD r/m, -imm .. NEGATED
                 elif re.match(
@@ -832,15 +916,18 @@ class Selector:
                             all_my_instrs,
                             my_instr,
                             RflagsBits.OF | RflagsBits.CF | RflagsBits.AF,
-                            force
+                            force_flag
                             ):
                             
-                            my_instr.set_eq_class = "sub-neg"
+                            cls.__set_eq_class(my_instr, "SUB negated")
                             selected_my_instrs.append(my_instr)
-                            avg_cap += 1.0
-                            min_cap += 1
-                            max_cap += 1
-            
+                            
+                            # Compute capacities.
+                            avg_cap += my_instr.eq_class.avg_cap
+                            min_cap += my_instr.eq_class.min_cap
+                            max_cap += my_instr.eq_class.max_cap
+        
+        
         analyzer.set_total_instrs = len(all_my_instrs)
         analyzer.set_useable_instrs = len(selected_my_instrs)
         analyzer.set_avg_capacity = avg_cap
