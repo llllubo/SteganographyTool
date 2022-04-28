@@ -98,7 +98,7 @@ class Analyzer:
         print(f"Potentially useable instructions:\t\t{self.useable_instrs:,}")
         print(f"Information capacity of given executable:")
         print()
-        print(f"\tAverage: \t{(self.avg_capacity / 8):12,} Bytes", end="")
+        print(f"\tAverage: \t{(self.avg_capacity / 8):12,.3f} Bytes", end="")
         
         # For average capacity.
         b = int(self.avg_capacity // 8)
@@ -110,7 +110,7 @@ class Analyzer:
         else:
             print()
         
-        print(f"\tMinimum: \t{(self.min_capacity / 8):12,} Bytes", end="")
+        print(f"\tMinimum: \t{(self.min_capacity / 8):12,.3f} Bytes", end="")
         # For minimum capacity.
         b = self.min_capacity // 8
         bits = self.min_capacity % 8
@@ -122,7 +122,7 @@ class Analyzer:
         else:
             print()
         
-        print(f"\tMaximum: \t{(self.max_capacity / 8):12,} Bytes", end="")
+        print(f"\tMaximum: \t{(self.max_capacity / 8):12,.3f} Bytes", end="")
         # For maximum capacity.
         b = int(self.max_capacity // 8)
         bits = int(self.max_capacity % 8)

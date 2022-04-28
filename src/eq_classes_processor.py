@@ -1,6 +1,9 @@
+from email.mime import base
 import json
 import sys
 import math
+
+from bitarray import *
 
 
 class EqClassesProcessor:
@@ -13,6 +16,7 @@ class EqClassesProcessor:
                  class_name: str,
                  desc: str,
                  members: list,
+                 encoded_idxs: list,    # List of BITS.
                  avg_cap: float,
                  min_cap: int,
                  max_cap: int) -> None:
@@ -20,6 +24,7 @@ class EqClassesProcessor:
         self.__class_name = class_name
         self.__desc = desc
         self.__members = members
+        self.__encoded_idxs = encoded_idxs
         self.__avg_cap = avg_cap
         self.__min_cap = min_cap
         self.__max_cap = max_cap
@@ -44,6 +49,16 @@ class EqClassesProcessor:
     @property
     def members(self) -> list:
         return self.__members
+    
+    
+    @property
+    def encoded_idxs(self) -> list:
+        return self.__encoded_idxs
+    
+    
+    @encoded_idxs.setter
+    def set_encoded_idxs(self, idxs: list) -> None:
+        self.__encoded_idxs = idxs
     
     
     @property
@@ -138,7 +153,34 @@ class EqClassesProcessor:
                         class_name=eq_class_name,
                         desc=obj_eq_class['Description'],
                         members=obj_eq_class['Members'],
+                        encoded_idxs=[],
                         avg_cap=cap,
                         min_cap=math.floor(cap),
                         max_cap=math.ceil(cap),
                     )
+                    
+    @classmethod
+    def encode_members_indexes(cls) -> None:
+        # It is used if not analyze mode was given, therefore it's
+        # called after eq_classes objects creation, additionally.
+        for eq_class in cls.all_eq_classes:
+            
+            mem_len = len(eq_class.members)
+            if mem_len:
+                # Equivalent class has some members.
+                base_bits_len = math.floor(math.log2(mem_len))
+                
+                for idx, _ in enumerate(eq_class.members):
+                    idx = idx % pow(2, base_bits_len)
+                    eq_class.encoded_idxs.append(
+                        bitarray(f"{idx:0{base_bits_len}b}", endian="little"))
+                    
+                # Correctness of bit values - adding 'group bits' at
+                # the end of bitarrays.
+                for idx, encoded_idx in enumerate(eq_class.encoded_idxs):
+
+                    if (mem_len - 1) < (idx + pow(2, base_bits_len)):
+                        break
+                    else:
+                        encoded_idx.append(0)
+                        eq_class.encoded_idxs[idx + pow(2, base_bits_len)].append(1)

@@ -91,14 +91,14 @@ class Main:
         potential_my_instrs = \
             Selector.select(all_my_instrs, args.method, args.force, analyzer)
 
-        for a, b in itertools.combinations(potential_my_instrs, 2):
-            if id(a) == id(b):
-                print(f"kurva..a.. {a.ioffset}, {a.eq_class}, {a.mov_scheduling_flag}")
-                print(f"kurva..b.. {b.ioffset}, {b.eq_class}, {b.mov_scheduling_flag}")
+        # for a, b in itertools.combinations(potential_my_instrs, 2):
+        #     if id(a) == id(b):
+        #         print(f"kurva..a.. {a.ioffset}, {a.eq_class}, {a.mov_scheduling_flag}")
+        #         print(f"kurva..b.. {b.ioffset}, {b.eq_class}, {b.mov_scheduling_flag}")
         
-        return
+        # return
     
-        ###### KONTROLNY VYPIS
+        # ###### KONTROLNY VYPIS
         # for my_instr in potential_my_instrs:
 
         #     ##### ENCODING - vracia zlu dlzku dlhych NOPov s prefixami
@@ -116,14 +116,33 @@ class Main:
 
         #     got_op_code = my_instr.instruction.op_code()
 
-            # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15} | {my_instr.eq_class}")
+        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15} | {my_instr.eq_class}")
+        #     print(f"{my_instr.instruction}")
+        #     print()
+        #     if my_instr.instruction.encoding != EncodingKind.LEGACY:
+        #         print()
+        #         print()
+        #         print()
+        #         print()
+        #         print("nieee")
+        #         print()
+        #         print()
+        #         print()
+        #         print()
 
-        # print(f"\nNONE: {0x0:08b}\n  OF: {0x1:08b}\n  SF: {0x2:08b}\n  ZF: {0x4:08b}\n  AF: {0x8:08b}\n  CF: {0x10:08b}\n  PF: {0x20:08b}")
-        # return
+        # # print(f"\nNONE: {0x0:08b}\n  OF: {0x1:08b}\n  SF: {0x2:08b}\n  ZF: {0x4:08b}\n  AF: {0x8:08b}\n  CF: {0x10:08b}\n  PF: {0x20:08b}")
         
+        # print(f"{OpCodeInfo(Code.FNOP).op_code:x}, {Code.}")
+        # return
+
         ##### TESTOVANIE
         # opat sa disassembluje vstupny subor a printnu sa instrukcie..
         # chcem zmenu len tam kde som ju spravil.. diff
+        
+        if args.mode != "a" and args.mode != "analyze":
+            # Encode indexes of each class members. They will be used
+            # while embedding/extracting/resetting.
+            EqClassesProcessor.encode_members_indexes()
         
         ######### POZOR NA ENDIANNESS, NEVIEM CI SOM DOBRE TVORIL BYTES..
         if args.mode == "e" or args.mode == "embed":
@@ -158,9 +177,9 @@ class Main:
             # Get all parts of data into the one.
             b_message = b_xored_len + b_xored_fext + b_encrypted
             
-            print(f"MIN CAPACITY: {analyzer.min_capacity / 8}")
-            print(f"MAX CAPACITY: {analyzer.max_capacity / 8}")
-            print(f"len(b_message): {len(b_message)}")
+            print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
+            print(f"MAX CAPACITY: {analyzer.max_capacity / 8} bytes")
+            print(f"len(b_message): {len(b_message)} bytes")
             print(f"b_message: {b_message}")
 
             # Check if cover file has sufficient capacity and inform.
@@ -168,7 +187,10 @@ class Main:
             Embedder.check_cap(len(b_message), analyzer)
 
             # vklada sa sprava -- prechod skrz ekviv. triedy atd. podla metody
-            Embedder.embed(b_message, potential_my_instrs)
+            Embedder.embed(inputf,
+                           b_message,
+                           potential_my_instrs,
+                           analyzer.bitness)
             
             print("---------------------------------------------------")
             

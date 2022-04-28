@@ -45,6 +45,12 @@ ALT. OPCODE WITH IMM BYTE OPERAND [LEN PRE 32-bit EXISTUJE AJ DRUHY OPCODE]:
     # ak je pritomny mandatory prefix, musi byt hned pred OPCODE alebo, ak je REX present, tak hned pred REX.
         # nachadza sa pri konkretnych instrukciach, kde je povinny -- rozsiruje priestor dany pre specifikaciu OPCODE, cim je mozne jeden OPCODE pouzit aj na iny ucel.
     # ^^ SEE PREFIX-GROUPS IMAGE IN WIN10
+    # ^^ SEE OBRAZOK NA LINUXE V PC -- nejde o REP, ... prefixy.
+
+    # DALSI NAPAD
+    # prefixy je mozne opakovat pri encoding LEGACY, processor aj tak
+    # vzdy berie len posledny.. preto funguju aj nopy ktore zacinaju
+    # 66 66 66 66 66 90.. atd
 
 SIZE-CHANGING TRICKS:
 (pouzitelne len ak by sa za instrukciou nachadzal NOP, ktory by sa prepisal)

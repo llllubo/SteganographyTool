@@ -47,7 +47,7 @@
             "Members": []
         },
         "SHL/SAL": {
-            "Description": "SAL is always changed to SHL by disassemblers. They differ in Reg/Opcode field inside ModR/M byte. SHL/SAL eax, 0x2",
+            "Description": "SAL is always changed to SHL by disassemblers. They differ in Reg/Opcode field inside ModR/M byte. E.g. SHL/SAL eax, 0x2",
             "Members": [
                 "SHL /4",
                 "SHL /6"

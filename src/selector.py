@@ -323,7 +323,11 @@ class Selector:
                                                     analyzer.bitness):
                             
                             if prev_mov.eq_class is not None and \
-                                prev_mov.eq_class.class_name == "MOV":
+                                (
+                                    prev_mov.eq_class.class_name == "MOV" or \
+                                    prev_mov.eq_class.class_name == \
+                                        "Swap base-index registers"
+                                ):
                                 # Previous MOV has already got eq_class
                                 # and also was selected.
                                 prev_mov.set_mov_scheduling_flag = True
@@ -624,8 +628,22 @@ class Selector:
                     ) and cls.__can_swap(instr, 1)
                 ):
                     
-                    cls.__set_eq_class(my_instr, "Swap base-index registers")
-                    selected_my_instrs.append(my_instr)
+                    mnemo = op_code.instruction_string[:3]
+                        
+                    # Same MOV instruction can be scheduled and also to
+                    # belong to this class.
+                    if mnemo == "MOV" and \
+                        my_instr.eq_class is not None and \
+                        my_instr.eq_class.class_name == "MOV Scheduling":
+                        # MOV has already been detected for ordering.
+                        cls.__set_eq_class(my_instr,
+                                           "Swap base-index registers")
+                        my_instr.set_mov_scheduling_flag = True
+                        
+                    else:
+                        cls.__set_eq_class(my_instr,
+                                           "Swap base-index registers")
+                        selected_my_instrs.append(my_instr)
                     
                     # Compute capacities.
                     avg_cap += my_instr.eq_class.avg_cap
@@ -686,9 +704,10 @@ class Selector:
             if method == "sub" or \
                 method == "ext-sub" or \
                 method == "ext-sub-nops-mov":
-                ## POZOR KED JE IMM, MOZE BYT PRVY OP. LEN REGISTER,
-                ## NEMUSI BYT R/M
-                ############ VYMENA OPERANDOV ak menim strany r, r/m
+                ## WARNING: When there is 'imm' in instruction string
+                ## and the first operand is any register, this register
+                ## can be directly specified - therefore there is
+                ## special regular expression sometimes.
 
                 ## CLASS TEST/AND/OR.
                 # TEST r, r\m does not exist.
@@ -757,13 +776,14 @@ class Selector:
                     
                     mnemo = op_code.instruction_string[:3]
                         
+                    # Same MOV instruction can be scheduled and also to
+                    # belong to this class.
                     if mnemo == "MOV" and \
                         my_instr.eq_class is not None and \
                         my_instr.eq_class.class_name == "MOV Scheduling":
                         # MOV has already been detected for ordering.
                         cls.__set_eq_class(my_instr, mnemo)
                         my_instr.set_mov_scheduling_flag = True
-                        # print("PROBLEM1")
                         
                     else:
                         if mnemo == "OR ":
@@ -784,13 +804,14 @@ class Selector:
                     
                     mnemo = op_code.instruction_string[:3]
                     
+                    # Same MOV instruction can be scheduled and also to
+                    # belong to this class.
                     if mnemo == "MOV" and \
                         my_instr.eq_class is not None and \
                         my_instr.eq_class.class_name == "MOV Scheduling":
                         # MOV is already detected for ordering.
                         cls.__set_eq_class(my_instr, mnemo)
                         my_instr.set_mov_scheduling_flag = True
-                        # print("PROBLEM2")
                         
                     else:
                         if mnemo == "OR ":
@@ -814,7 +835,7 @@ class Selector:
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but
                     # also in 32-bit mode this can cause classes
-                    # '.*-32bit'.
+                    # '.* 32-bit'.
                     if selected_my_instrs and \
                         id(selected_my_instrs[-1]) != id(my_instr):
                         
@@ -845,7 +866,7 @@ class Selector:
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but
                     # also in 32-bit mode this can cause classes
-                    # '.*-32bit'.
+                    # '.* 32-bit'.
                     if selected_my_instrs and \
                         id(selected_my_instrs[-1]) != id(my_instr):
                         
@@ -875,7 +896,7 @@ class Selector:
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but
                     # also in 32-bit mode this can cause classes
-                    # '.*-32bit'.
+                    # '.* 32-bit'.
                     if selected_my_instrs and \
                         id(selected_my_instrs[-1]) != id(my_instr):
                         
@@ -906,7 +927,7 @@ class Selector:
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but
                     # also in 32-bit mode this can cause classes
-                    # '.*-32bit'.
+                    # '.* 32-bit'.
                     if selected_my_instrs and \
                         id(selected_my_instrs[-1]) != id(my_instr):
                         
