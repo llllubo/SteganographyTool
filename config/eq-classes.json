@@ -36,14 +36,14 @@
 
     "Extended Instruction Substitution": {
         "TEST non-accumulator register": {
-            "Description": "TEST instruction differ has two opcodes when first operand si non-accumulator register (only AH register is allowed) and second is immediate value. Bit of information is hidden in ModR/M byte at LSB of Reg/Opcode field. E.g. TEST ebx, 0x10",
+            "Description": "TEST instruction has two opcodes when first operand is non-accumulator register (except AH register) and second is immediate value. Then, bit of information is hidden in ModR/M byte at LSB of Reg/Opcode field. E.g. TEST ebx, 0x10",
             "Members": [
                 "TEST /0",
                 "TEST /1"
             ]
         },
         "Swap base-index registers": {
-            "Description": "It's possible to swap base and index registers, if scale is set to 1 (registers in memory operand can be at least 32-bits long). Members array is not needed here as encoding is determined lexicographically. E.g. MOV dword[eax + ebx*1], 0x5; MOV dword[ebx + eax*1], 0x5",
+            "Description": "It's possible to swap base and index registers, if scale is set to 1 (registers in memory operand can be at least 32-bits long and must be of the same size). Members array is not needed here as encoding is determined lexicographically. E.g. MOV dword[eax + ebx*1], 0x5; MOV dword[ebx + eax*1], 0x5",
             "Members": []
         },
         "SHL/SAL": {

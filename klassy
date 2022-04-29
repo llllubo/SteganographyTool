@@ -49,7 +49,7 @@ ALT. OPCODE WITH IMM BYTE OPERAND [LEN PRE 32-bit EXISTUJE AJ DRUHY OPCODE]:
 
     # DALSI NAPAD
     # prefixy je mozne opakovat pri encoding LEGACY, processor aj tak
-    # vzdy berie len posledny.. preto funguju aj nopy ktore zacinaju
+    # vzdy berie bud len posledny, alebo prvy a dalsie ignoruje.. bolo by dobre to vyuzit a najst v tomto prienik, teda znasobit prefix instrukcie podla pouziteho kodovania.. avsak ide o size changeing TRICK.. preto funguju aj nopy ktore zacinaju
     # 66 66 66 66 66 90.. atd
 
 SIZE-CHANGING TRICKS:

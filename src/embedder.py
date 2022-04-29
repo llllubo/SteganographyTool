@@ -1,6 +1,6 @@
+from asyncore import read
 import os
 import sys
-import re
 import math
 import lzma
 from cryptography.fernet import Fernet
@@ -170,34 +170,34 @@ class Embedder:
                 
     @staticmethod
     def __find_encoded_idx(eq_class: EqClassesProcessor,
-                           bits_mess: bitarray,
-                           curr_bits_idx: int) -> int:
+                           bits_mess: bitarray) -> int:
         
         mem_len = len(eq_class.members)
         # 1st try is to take maximum number of bits that
         # can be embedded by current equivalent class.
         max_bits = math.floor(math.log2(mem_len)) + 1
         
-        print(f"SOM TU: {mem_len}, {max_bits}")
-        print(f"{eq_class.encoded_idxs}")
-        print(f"vkladam max: {bits_mess[curr_bits_idx:(curr_bits_idx + max_bits)]}\nvkladam min: {bits_mess[curr_bits_idx:(curr_bits_idx + max_bits-1)]}")
-        
         res = None
+        # 1st try to find appropriate encoding with max. allowed length.
         for idx, encoded_idx in enumerate(eq_class.encoded_idxs):
             if encoded_idx == \
-                bits_mess[curr_bits_idx:(curr_bits_idx + max_bits)]:
+                bits_mess[:max_bits]:
                 
                 res = idx
-            
+        
+        # 2nd try to find appropriate encoding with min. allowed length.
+        # This has to always find useable encoding, if 1st try was
+        # unsuccessful.
         if res is None:
             min_bits = max_bits - 1
             
             for idx, encoded_idx in enumerate(eq_class.encoded_idxs):
                 if encoded_idx == \
-                    bits_mess[curr_bits_idx:(curr_bits_idx + min_bits)]:
+                    bits_mess[:min_bits]:
                     
                     res = idx
                     
+        ####################################### PREC
         if res is None:
             print("TOTO POJDE PREC -- KONTROLA NECHCENEJ CHYBY")
                     
@@ -221,13 +221,12 @@ class Embedder:
         ## eq_classes schedule, schedule
         ## flag, eq_class schedule
         ## flag, flag
+        ##### POZOR NA .ip --- je to pre 64-bit mode?? (misc, disassembler, selector)
         
         bits_mess = bitarray(endian="little")
         bits_mess.frombytes(mess)
-        curr_bits_idx = 0
-        ######################## urobit cez 'del a[x:y]' -- zmaze to kus pola
-        # print(f"{bits_mess}")
-        # print(f"")
+        print(f"{bits_mess}")
+        print(f"")
         
         try:
             fd = open(fexe, "r+b")
@@ -242,12 +241,50 @@ class Embedder:
             eq_class = my_instr.eq_class
             
             # Instructions that don't have encoding LEGACY are skipped.
+            # Legacy encoding for opcodes of instructions is mainly used
+            # in each PE and ELF (32- and 64-bit) executables.
             if eq_class is not None and \
                 my_instr.instruction.encoding == EncodingKind.LEGACY:
                 
                 op_code = my_instr.instruction.op_code()
+                
+                
+                fd.seek(my_instr.foffset)
+                print(f"{eq_class.class_name} | {my_instr.instruction} | {op_code.instruction_string} | {my_instr.foffset:x} | {fd.read(my_instr.instruction.len).hex()}")
 
-                # 'MOV Scheduling' CLASS
+                # print(f"op_code: {OpCodeInfo(my_instr.instruction.code).op_code:x}")
+                # print(f"op_code_len {OpCodeInfo(my_instr.instruction.code).op_code_len}")
+                # print()
+                # print(f"mandatory_prefix {OpCodeInfo(my_instr.instruction.code).mandatory_prefix:x}")
+                # print()
+                # print(f"is_group {OpCodeInfo(my_instr.instruction.code).is_group}")
+                # print(f"group_index {OpCodeInfo(my_instr.instruction.code).group_index}")                    
+                # print(f"is_rm_group {OpCodeInfo(my_instr.instruction.code).is_rm_group}")
+                # print(f"rm_group_index {OpCodeInfo(my_instr.instruction.code).rm_group_index}")
+                # print()
+                # print(f"is_available_in_mode(bitness) {OpCodeInfo(my_instr.instruction.code).is_available_in_mode(bitness)}")
+                # print(f"compatibility_mode {OpCodeInfo(my_instr.instruction.code).compatibility_mode}")
+                # print(f"long_mode {OpCodeInfo(my_instr.instruction.code).long_mode}")
+                # print()
+                # print(f"mode64 {OpCodeInfo(my_instr.instruction.code).mode64}")
+                # print(f"mode32 {OpCodeInfo(my_instr.instruction.code).mode32}")
+                # print(f"mode16 {OpCodeInfo(my_instr.instruction.code).mode16}")
+                # print(f"is_instruction {OpCodeInfo(my_instr.instruction.code).is_instruction}")
+                # print()
+                # print(f"code_size {my_instr.instruction.code_size}")
+                # print(f"is_invalid {my_instr.instruction.is_invalid}")
+                # if my_instr.instruction.op1_kind == OpKind.IMMEDIATE64:
+                #     print(f"immediate {my_instr.instruction.immediate(1)}")
+                # print(f"op_code() {my_instr.instruction.op_code()}") # -- vracia OpCodeInfo
+                # print()
+                # print()
+                # print()
+                # print()
+                
+                
+                
+                
+
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
                 # instructions strings.
@@ -255,85 +292,62 @@ class Embedder:
                     my_instr.mov_scheduling_flag:
                     pass
                 
-                # '2 Bytes Long NOP' & '3 Bytes Long NOP' CLASS
+                # Classes can be together as their usage is based on
+                # exactly same principle.
                 elif eq_class.class_name == "2 Bytes Long NOP" or \
                     eq_class.class_name == "3 Bytes Long NOP":
 
-                    idx = cls.__find_encoded_idx(eq_class,
-                                                 bits_mess,
-                                                 curr_bits_idx)
-                    bits_to_embed = eq_class.encoded_idxs[idx]
+                    # Find bits to embed according to the encoding.
+                    idx = cls.__find_encoded_idx(eq_class, bits_mess)
                     
-                    # Write to the executable.
+                    # Embed to the executable.
                     fd.seek(my_instr.foffset)
                     fd.write(bytes.fromhex(eq_class.members[idx][2:]))
                     
-                    # Increment index of the current embedding bits.
-                    curr_bits_idx += len(bits_to_embed)
+                    embedded_bits = eq_class.encoded_idxs[idx]
                     
-                    # print(f"EMBEDDED: {bits_to_embed}, {bits_to_embed.tobytes()}, foff: {my_instr.foffset:x}, pred: {curr_bits_idx-len(bits_to_embed)}, po: {curr_bits_idx}")
-                    # sys.exit()
+                    # Delete already embedded bits from list.
+                    del bits_mess[:len(embedded_bits)]
                 
-                # '>3 Bytes Long NOP' CLASS
                 # Class does not encodes class members, as it does not
                 # have any. In this case, bits from message are simply
                 # embedded to the last useable instruction bytes.
                 elif eq_class.class_name == ">3 Bytes Long NOP":
 
+                    # Get number of bits available for embedding.
                     bits_cnt = misc.count_useable_bytes_from_nop(my_instr.instruction, bitness)
-                    
-                    # There is 100% chance that cnt will be multiple of
-                    # 8.
+                    # Take bits needed to embed.
+                    bits_to_embed = bits_mess[:bits_cnt]
+
+                    # There is 100% chance that it will be multiple of 8.
                     b_cnt = bits_cnt // 8
                     
-                    bits_to_embed = \
-                        bits_mess[curr_bits_idx:(curr_bits_idx + bits_cnt)]
-                    
-                    # Write to the executable.
-                    pos = my_instr.foffset + (my_instr.instruction.len - b_cnt)
+                    # Embed to the executable.
+                    pos = my_instr.foffset + (len(my_instr.instruction)-b_cnt)
                     fd.seek(pos)
                     fd.write(bits_to_embed)
                     
-                    # Increment index of the current embedding bits.
-                    curr_bits_idx += bits_cnt
-                    
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).op_code}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).op_code_len}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).encoding}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).can_use_lock_prefix}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).group_index}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).is_group}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).mandatory_prefix}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).long_mode}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).rm_group_index}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).is_rm_group}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).rm_group_index}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).is_available_in_mode(bitness)}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).compatibility_mode}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).long_mode}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).ignores_segment}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).ignores_mod_bits}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).default_op_size64}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).mode64}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).mode32}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).mode16}")
-                    # print(f"{OpCodeInfo(my_instr.instruction.code).is_instruction}")
-                    
-                    # print(f"{my_instr.instruction.code_size}")
-                    # print(f"{my_instr.instruction.is_invalid}")
-                    # print(f"{my_instr.instruction.immediate}")
-                    # print(f"{my_instr.instruction.op_code()}") # -- vracia OpCodeInfo
-                    # sys.exit()
-                    ## POZOR NA .ip --- je to pre 64-bit mode?? (misc, disassembler, selector)
-                    
-                    # print(f"EMBEDDED: {bits_to_embed}, {bits_to_embed.tobytes()}, foff: {my_instr.foffset:x}, pred: {curr_bits_idx-bits_cnt}, po: {curr_bits_idx}")
-                    # sys.exit()
+                    # Delete already embedded bits from list.
+                    del bits_mess[:bits_cnt]
                 
-                # '' CLASS
                 elif eq_class.class_name == "TEST non-accumulator register":
-                    pass
+                    
+                    # Find bits to embed according to the encoding.
+                    idx = cls.__find_encoded_idx(eq_class, bits_mess)
+                    
+                    # fd.seek(my_instr.foffset)
+                    # b_instr_fromf = fd.read(my_instr.instruction.len)
+                    # print(f"{b_instr_fromf}")
+                    
+                    # print(f"is_group {OpCodeInfo(my_instr.instruction.code).is_group}")
+                    # print(f"group_index {OpCodeInfo(my_instr.instruction.code).group_index}")                    
+                    # print(f"is_rm_group {OpCodeInfo(my_instr.instruction.code).is_rm_group}")
+                    # print(f"rm_group_index {OpCodeInfo(my_instr.instruction.code).rm_group_index}")
+                    # sys.exit()
+                    
+                    # embedded_bits = eq_class.encoded_idxs[idx]
+                    
                 
-                # 'Swap base-index registers' CLASS
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
                 # registers name.
@@ -343,60 +357,38 @@ class Embedder:
                     ## swapnut aj bity v REX prefixe (LEN V LONG MODE),
                     # ktore doplnuju kod registrov..
                     pass
+                    # my_instr.instruction.set_memory_base()
+                    # my_instr.instruction.set_memory_index()
                 
-                # '' CLASS
                 elif eq_class.class_name == "SHL/SAL":
-                    pass
-                    # idx = cls.__find_encoded_idx(eq_class,
-                    #                              bits_mess,
-                    #                              curr_bits_idx)
+                    pass                    
                     
-                    # # bits_to_embed = eq_class.encoded_idxs[idx]
-                    # bits_to_embed = cls.__parse_shl_member(idx)
-                    
-                    # # Write to the executable.
-                    # fd.seek(my_instr.foffset)
-                    # fd.write()
-                    
-                    # # Increment index of the current embedding bits.
-                    # curr_bits_idx += len(bits_to_embed)
-                    
-                    # print(f"EMBEDDED: {bits_to_embed}, {bits_to_embed.tobytes()}, foff: {my_instr.foffset:x}, pred: {curr_bits_idx-len(bits_to_embed)}, po: {curr_bits_idx}")
-                    # sys.exit()
+                    #
                 
-                # '' CLASS
                 elif eq_class.class_name == "ADD 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "SUB 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "CMP 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "AND 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "OR 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "XOR 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "ADC 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "SBB 32-bit":
                     pass
                 
-                # '' CLASS
                 elif eq_class.class_name == "TEST/AND/OR":
                     pass
                 
@@ -449,14 +441,63 @@ class Embedder:
                 print()
                 print()
                 print()
-                print(f"CAN NOT BE USED")
+                print(f"CAN NOT BE USED -- NOT LEGACY")
                 print()
                 print()
                 print()
                 
-            if (curr_bits_idx + 1) == len(bits_mess):
+            ###################################### OK ???
+            if bits_mess is None:
                 # All bits were embedded (whole message).
-                # print(f"{curr_bits_idx}, KONEC")
+                print(f"{bits_mess}, KONEC")
                 break
             
         fd.close()
+        
+        
+        
+    # eq_all_bits(&self, other: &Self)
+     
+    # set_op1_kind(new_val)
+
+    # info_factory = InstructionInfoFactory()
+    
+    # assert instr1.code == Code.XCHG_RM8_R8
+    # assert instr1.mnemonic == Mnemonic.XCHG
+    # assert instr1.len == 4
+    
+    # # `instr.mnemonic` also returns a `Mnemonic` enum
+    # print(f"mnemonic: {formatter.format_mnemonic(instr, FormatMnemonicOptions.NO_PREFIXES)}")
+    # print(f"operands: {formatter.format_all_operands(instr)}")
+    # # `instr.op0_kind`/etc return operand kind, see also `instr.op0_register`, etc to get reg/mem info
+    # print(f"op #0   : {formatter.format_operand(instr, 0)}")
+    # print(f"op #1   : {formatter.format_operand(instr, 1)}")
+    # print(f"reg RCX : {formatter.format_register(Register.RCX)}")
+    
+    # nop = Instruction.create(Code.NOPQ)
+    # xor = Instruction.create_reg_i32(Code.XOR_RM64_IMM8, Register.R14, -1)
+    # rep_stosd = Instruction.create_rep_stosd(64)
+    # add = Instruction.create_mem_i32(Code.ADD_RM64_IMM8, MemoryOperand(Register.RCX, Register.RDX, 8, 0x1234_5678), 2)
+    # print(f"{nop}")
+    # print(f"{xor:x}")
+    # print(f"{rep_stosd}")
+    # print(f"{add}")
+    # print(f"{Instruction.create_declare_byte_1(0x90)}")
+    # print(f"{xor.memory_displ_size}")
+    # print(f"{xor.memory_displacement}")
+    # print(f"{xor.memory_index_scale}")
+    # print(f"0x{xor.immediate(1):x}")
+    
+    # print(f"{instr.code} interny kod instrukcie")
+    # print(f"{instr.op_code()} mnemonic instrukcie aj s ops")
+    # print(f"{instr.code_size} velkost kodu instrukcie (bytes)")
+    # print(f"{instr.mnemonic} interny kod mnemonicu")
+    # print(f"{instr.memory_base} interny kod")
+    # print(f"{instr.memory_index} interny kod")
+    
+    # print(f"{instr.op_count}")
+    # print(f"{instr.op_kind(0) == OpKind.MEMORY}")
+    # print(f"{instr.memory_base == Register.RAX}")
+    # print(f"{instr.memory_index == Register.NONE}")
+    # print(f"{instr.op_kind(1) == OpKind.REGISTER}")
+    # print(f"{instr.op_register(1) == Register.EBX}")

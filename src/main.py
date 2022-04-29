@@ -11,8 +11,6 @@ Project: Bachelor's thesis, BUT FIT Brno
 
 import sys
 import time
-import re
-import itertools
 from iced_x86 import *
 
 from args_parser import ArgsParser
@@ -256,58 +254,3 @@ if __name__ == "__main__":
         sys.exit(0)
     
     print("\n--- %s seconds ---" % (time.time() - start))
-    
-    
-    
-        ### Z ICED POVODNE SPRACOVANIE
-        # code_bitness, code_sections = Disassembler.get_binary_info(inputf)
-        
-        # ### ulozit vsetky instrukcie do listu -- parsovat vystup objdump
-        # # nejako oddelit funkcie od seba, aj sekcie
-        # # musim ich mat kvoli neskorsej kontrole na priznaky
-        # disassm_sections = []
-        # for sec in code_sections:
-            
-        #     # CODE_RIP = 0x0000_0001_4000_1000
-        #     # start_foffset = 0x400 + (CODE_RIP - 0x0001_4000_1000)
-        #     code_size = int(sec[1], 16)
-        #     code_rip = int(sec[2], 16)
-        #     start_foffset = int(sec[3], 16)
-        #     # print(f"{sec[0]}, {code_size:,}, {code_rip:,}, {start_foffset:,}")
-        #     print(f"{sec[0]}, 0x{code_size:x}, 0x{code_rip:x}, 0x{start_foffset:x}")
-
-        #     try:
-        #         fd = open(inputf, "rb")
-        #     except IOError:
-        #         print(f"ERROR! Can not access given executable: {inputf}", file=sys.stderr)
-        #         sys.exit(101)
-            
-        #     fd.seek(start_foffset)
-        #     code = fd.read(code_size)
-        #     fd.close()
-
-        #     # Create the decoder and initialize RIP
-        #     decoder = iced.Decoder(code_bitness, code, ip=code_rip)
-        #     disassm_sections.append(decoder)
-
-        #     formatter = iced.Formatter(iced.FormatterSyntax.INTEL)
-        #     formatter.digit_separator = "'"
-        #     formatter.first_operand_char_index = 8
-        #     formatter.hex_prefix = "0x"
-        #     formatter.hex_suffix = ""
-        #     formatter.hex_digit_group_size = 4
-        #     formatter.uppercase_hex = False # cisla v operandoch
-        #     formatter.space_after_operand_separator = True
-        #     formatter.show_zero_displacements = True
-        #     formatter.leading_zeros = True
-
-        #     for instr in decoder:
-        #         disasm = formatter.format(instr)
-        #         #   mnemonic_str = formatter.format_mnemonic(instr, FormatMnemonicOptions.NO_PREFIXES)
-        #         #   op0_str = formatter.format_operand(instr, 0)
-        #         #   operands_str = formatter.format_all_operands(instr)
-                
-        #         instr_offset = instr.ip - code_rip
-        #         bytes_str = code[instr_offset:(instr_offset + instr.len)].hex().lower()
-        #         print(f"{instr.ip:016X} {bytes_str:30} {disasm}")
-        #     print()

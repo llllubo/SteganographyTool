@@ -3,7 +3,6 @@ import subprocess
 import re
 
 from iced_x86 import *
-from analyzer import Analyzer
 from my_instruction import MyInstruction
 
 
@@ -155,49 +154,3 @@ class Disassembler:
         fd.close()
 
         return all_my_instrs, code_bitness
-     
-        # eq_all_bits(&self, other: &Self)
-     
-        # set_op1_kind(new_val)
-    
-        # info_factory = InstructionInfoFactory()
-        
-        # assert instr1.code == Code.XCHG_RM8_R8
-        # assert instr1.mnemonic == Mnemonic.XCHG
-        # assert instr1.len == 4
-        
-        # # `instr.mnemonic` also returns a `Mnemonic` enum
-        # print(f"mnemonic: {formatter.format_mnemonic(instr, FormatMnemonicOptions.NO_PREFIXES)}")
-        # print(f"operands: {formatter.format_all_operands(instr)}")
-        # # `instr.op0_kind`/etc return operand kind, see also `instr.op0_register`, etc to get reg/mem info
-        # print(f"op #0   : {formatter.format_operand(instr, 0)}")
-        # print(f"op #1   : {formatter.format_operand(instr, 1)}")
-        # print(f"reg RCX : {formatter.format_register(Register.RCX)}")
-        
-        # nop = Instruction.create(Code.NOPQ)
-        # xor = Instruction.create_reg_i32(Code.XOR_RM64_IMM8, Register.R14, -1)
-        # rep_stosd = Instruction.create_rep_stosd(64)
-        # add = Instruction.create_mem_i32(Code.ADD_RM64_IMM8, MemoryOperand(Register.RCX, Register.RDX, 8, 0x1234_5678), 2)
-        # print(f"{nop}")
-        # print(f"{xor:x}")
-        # print(f"{rep_stosd}")
-        # print(f"{add}")
-        # print(f"{Instruction.create_declare_byte_1(0x90)}")
-        # print(f"{xor.memory_displ_size}")
-        # print(f"{xor.memory_displacement}")
-        # print(f"{xor.memory_index_scale}")
-        # print(f"0x{xor.immediate(1):x}")
-        
-        # print(f"{instr.code} interny kod instrukcie")
-        # print(f"{instr.op_code()} mnemonic instrukcie aj s ops")
-        # print(f"{instr.code_size} velkost kodu instrukcie (bytes)")
-        # print(f"{instr.mnemonic} interny kod mnemonicu")
-        # print(f"{instr.memory_base} interny kod")
-        # print(f"{instr.memory_index} interny kod")
-        
-        # print(f"{instr.op_count}")
-        # print(f"{instr.op_kind(0) == OpKind.MEMORY}")
-        # print(f"{instr.memory_base == Register.RAX}")
-        # print(f"{instr.memory_index == Register.NONE}")
-        # print(f"{instr.op_kind(1) == OpKind.REGISTER}")
-        # print(f"{instr.op_register(1) == Register.EBX}")

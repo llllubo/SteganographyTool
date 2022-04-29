@@ -1,5 +1,4 @@
 import re
-import math
 
 from iced_x86 import *
 from my_instruction import MyInstruction
