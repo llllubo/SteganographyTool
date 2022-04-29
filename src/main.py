@@ -60,29 +60,6 @@ class Main:
         
         # Prepare instances of equivalent classes.
         EqClassesProcessor.prepare_eq_classes(args.method, args.config_file)
-        # print(EqClassesProcessor.all_eq_classes)
-        # print()
-        # return
-        
-        
-        ############### ZAPIS v pripade do NOPov multibytes
-        # # nulls = 5
-        # hex_string = "0x90900f1f0090906690669090d9d06690d9d090d9d00f1f002e660f1f840000000000906690909090900f1f009090d9d09090"
-        # mess = bytes.fromhex(hex_string[2:])
-        # # Must compute offset for multi-byte NOPs like that.
-        # # offset = potential_instrs[1].foffset + potential_instrs[1].instruction.len - nulls
-
-        # try:
-        #     fd = open("aa", "r+b")
-        # except IOError:
-        #     print("ERROR! ", file=sys.stderr)
-        # else:
-        #     # fd.seek(offset)
-        #     fd.seek(0x1044)
-        #     fd.write(mess)
-        #     fd.close()
-        ################
-        
         
         # Prepare empty Analyzer to be filled by Selector.
         analyzer = Analyzer(bitness, 0, 0, 0.0, 0, 0)
@@ -93,8 +70,6 @@ class Main:
         #     if id(a) == id(b):
         #         print(f"kurva..a.. {a.ioffset}, {a.eq_class}, {a.mov_scheduling_flag}")
         #         print(f"kurva..b.. {b.ioffset}, {b.eq_class}, {b.mov_scheduling_flag}")
-        
-        # return
     
         # ###### KONTROLNY VYPIS
         # for my_instr in potential_my_instrs:
@@ -128,11 +103,6 @@ class Main:
         #         print()
         #         print()
 
-        # # print(f"\nNONE: {0x0:08b}\n  OF: {0x1:08b}\n  SF: {0x2:08b}\n  ZF: {0x4:08b}\n  AF: {0x8:08b}\n  CF: {0x10:08b}\n  PF: {0x20:08b}")
-        
-        # print(f"{OpCodeInfo(Code.FNOP).op_code:x}, {Code.}")
-        # return
-
         ##### TESTOVANIE
         # opat sa disassembluje vstupny subor a printnu sa instrukcie..
         # chcem zmenu len tam kde som ju spravil.. diff
@@ -143,12 +113,8 @@ class Main:
             EqClassesProcessor.encode_members_indexes()
         
         ######### POZOR NA ENDIANNESS, NEVIEM CI SOM DOBRE TVORIL BYTES..
+        
         if args.mode == "e" or args.mode == "embed":
-            
-            ####### EMBEDDING
-            # zatial sa vlozia bity na kazde miesto
-            # ak bude cas, z tohto listu referencii sa vyselektuju len niektore,
-            # ale tak aby som bol schopny vratit rovnake vysledky pri extrakcii
             
             # Get secret data and file extension in bytes.
             b_secret_data, b_fext = Embedder.get_secret_data(args.secret_message)

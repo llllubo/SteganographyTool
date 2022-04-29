@@ -221,7 +221,6 @@ class Embedder:
         ## eq_classes schedule, schedule
         ## flag, eq_class schedule
         ## flag, flag
-        ##### POZOR NA .ip --- je to pre 64-bit mode?? (misc, disassembler, selector)
         
         bits_mess = bitarray(endian="little")
         bits_mess.frombytes(mess)

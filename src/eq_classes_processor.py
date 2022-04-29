@@ -92,7 +92,7 @@ class EqClassesProcessor:
         # real capacity depend on exact occurence of particular members
         # from class.
         n = len(members)
-        return math.ceil(math.log2(n)-1) + \
+        return math.ceil(math.log2(n) - 1) + \
             (n - pow(2, math.ceil(math.log2(n) - 1))) / \
                 (pow(2, math.ceil(math.log2(n) - 1)))
     
@@ -138,7 +138,7 @@ class EqClassesProcessor:
                     # Compute capacities for some equivalent classes.
                     if eq_class_name == ">3 Bytes Long NOP":
                         # This must be computed for every instruction
-                        # separately, therefore 0 for now.
+                        # separately, therefore 0.0 for now.
                         cap = 0.0
                         
                     elif eq_class_name == "MOV Scheduling" or \

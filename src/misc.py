@@ -8,9 +8,6 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from iced_x86 import (Instruction, Encoder)
 
 
-######### ESTE OPRAVIT __ V NAZVOCH KONSTANT V EMBEDDERI, MOZNO ICH
-# POTREBUJEM AJ INDE... TIEZ MOZNO ICH PRESUNUT INDE
-
 # hovori na kolkych bajtoch bude vkladana info o dlzke spravy
 SIZE_OF_DATA_LEN = 32
 # hovori na kolkych bajtoch bude vkladana info o file extension
