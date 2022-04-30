@@ -585,7 +585,7 @@ class Selector:
                 # TEST non-acc-(except AH)-reg, imm
                 # TEST /0 /1
                 if re.match(
-                        r'TEST [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}',
+                        r'^TEST [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and cls.__not_acc_reg(instr):
                     
@@ -610,19 +610,19 @@ class Selector:
                 # 'ADD negated' and 'SUB negated'.
                 elif (   # OPCODE Memory, Register.
                     re.match(
-                        r'.* r/m[0-9]{1,2}, r[0-9]{1,2}',
+                        r'^.* r/m[0-9]{1,2}, r[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and cls.__can_swap(instr, 0)
                 ) or \
                 (        # OPCODE Memory, Immediate.
                     re.match(
-                        r'.* r/m[0-9]{1,2}, imm[0-9]{1,2}',
+                        r'^.* r/m[0-9]{1,2}, imm[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and cls.__can_swap(instr, 0)
                 ) or \
                 (        # OPCODE Register, Memory.
                     re.match(
-                        r'.* r[0-9]{1,2}, r/m[0-9]{1,2}',
+                        r'^.* r[0-9]{1,2}, r/m[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and cls.__can_swap(instr, 1)
                 ):
@@ -654,7 +654,7 @@ class Selector:
                 # be only 1 as value (this has specific OPCODE), CL
                 # register or any immediate value.
                 elif re.match(
-                        r'(?:SHL|SAL) r/m[0-9]{1,2}, (?:1|CL|imm[0-9]{1,2})',
+                        r'^(?:SHL|SAL) r/m[0-9]{1,2}, (?:1|CL|imm[0-9]{1,2})$',
                         op_code.instruction_string
                     ):
                     # This overlap with class 'swap-base-index', but
@@ -678,7 +678,7 @@ class Selector:
                     # AL register appears individually in mnemonics, so
                     # do not have to be checked in r/m8.
                     if re.match(
-                            r'(?:ADD|SUB|ADC|SBB|AND|OR|XOR|CMP) r/m8, imm8',
+                            r'^(?:ADD|SUB|ADC|SBB|AND|OR|XOR|CMP) r/m8, imm8$',
                             op_code.instruction_string
                     ):
                         # This has affect, in 32-bit mode, on classes
@@ -711,7 +711,7 @@ class Selector:
                 ## CLASS TEST/AND/OR.
                 # TEST r, r\m does not exist.
                 if re.match(
-                        r'TEST r/m[0-9]{1,2}, r[0-9]{1,2}',
+                        r'^TEST r/m[0-9]{1,2}, r[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.op0_kind == OpKind.REGISTER and \
                         instr.op0_register == instr.op1_register:
@@ -725,7 +725,7 @@ class Selector:
                     max_cap += my_instr.eq_class.max_cap
                     
                 elif re.match(
-                        r'(?:AND|OR) (?:r|r/m)[0-9]{1,2}, (?:r/m|r)[0-9]{1,2}',
+                        r'^(?:AND|OR) (?:r|r/m)[0-9]{1,2}, (?:r/m|r)[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.op0_kind == OpKind.REGISTER and \
                         instr.op1_kind == OpKind.REGISTER and \
@@ -741,7 +741,7 @@ class Selector:
                     
                 ## CLASS SUB/XOR.
                 elif re.match(
-                        r'(?:SUB|XOR) (?:r/m|r)[0-9]{1,2}, (?:r|r/m)[0-9]{1,2}',
+                        r'^(?:SUB|XOR) (?:r/m|r)[0-9]{1,2}, (?:r|r/m)[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.op0_kind == OpKind.REGISTER and \
                         instr.op1_kind == OpKind.REGISTER and \
@@ -769,7 +769,7 @@ class Selector:
                 # AND and OR are in the previous 'if' as well, because
                 # their priority is to belong to the class TEST/AND/OR.
                 elif re.match(
-    r'(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r/m[0-9]{1,2}, r[0-9]{1,2}',
+    r'^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r/m[0-9]{1,2}, r[0-9]{1,2}$',
                         op_code.instruction_string
                 ) and instr.op0_kind == OpKind.REGISTER:
                     
@@ -797,7 +797,7 @@ class Selector:
                     max_cap += my_instr.eq_class.max_cap
                     
                 elif re.match(
-    r'(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r[0-9]{1,2}, r/m[0-9]{1,2}',
+    r'^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r[0-9]{1,2}, r/m[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.op1_kind == OpKind.REGISTER:
                     
@@ -827,7 +827,7 @@ class Selector:
                 ## CLASSES ADD & SUB WITH THEIR NEGATED IMMEDIATES.
                 # ADD r/m, imm
                 elif re.match(
-                        r'ADD [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}',
+                        r'^ADD [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.immediate(1) >= 0:
                     # Must check because of mode 'ext-sub-nops' where
@@ -858,7 +858,7 @@ class Selector:
                     
                 # SUB r/m, -imm .. NEGATED
                 elif re.match(
-                        r'SUB [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}',
+                        r'^SUB [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.immediate(1) < 0:
                     # Must check because of mode 'ext-sub-nops' where
@@ -888,7 +888,7 @@ class Selector:
                     
                 # SUB r/m, imm
                 elif re.match(
-                        r'SUB [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}',
+                        r'^SUB [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.immediate(1) >= 0:
                     # Must check because of mode 'ext-sub-nops' where
@@ -919,7 +919,7 @@ class Selector:
                     
                 # ADD r/m, -imm .. NEGATED
                 elif re.match(
-                        r'ADD [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}',
+                        r'^ADD [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and instr.immediate(1) < 0:
                     # Must check because of mode 'ext-sub-nops' where

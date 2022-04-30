@@ -1,6 +1,7 @@
-from email.mime import base
 import json
+from multiprocessing.sharedctypes import Value
 import sys
+import re
 import math
 
 from bitarray import *
@@ -77,12 +78,7 @@ class EqClassesProcessor:
     
     
     def __repr__(self) -> str:
-        mems = ""
-        for i in self.members:
-            mems += f"{i}, "
-        mems = mems[:-2]
-        
-        return f"\nEqClass('{self.method_name[:10]}...', '{self.class_name}', '{self.desc[:10]}...', [{mems}], {self.avg_cap}, {self.min_cap}, {self.max_cap})"
+        return f"\nEqClass('{self.method_name[:10]}...', '{self.class_name}', '{self.desc[:10]}...', {self.members}, {self.encoded_idxs}, {self.avg_cap}, {self.min_cap}, {self.max_cap})"
     
     
     @staticmethod
@@ -94,7 +90,7 @@ class EqClassesProcessor:
         n = len(members)
         return math.ceil(math.log2(n) - 1) + \
             (n - pow(2, math.ceil(math.log2(n) - 1))) / \
-                (pow(2, math.ceil(math.log2(n) - 1)))
+                pow(2, math.ceil(math.log2(n) - 1))
     
     
     @classmethod
@@ -184,3 +180,63 @@ class EqClassesProcessor:
                     else:
                         encoded_idx.append(0)
                         eq_class.encoded_idxs[idx + pow(2, base_bits_len)].append(1)
+                        
+                        
+    @classmethod
+    def parse_members(cls) -> None:
+        # Parse certain members to bitarrays required to embed or to
+        # extract. Then Embedder and Extractor will just pick this bits.
+        for eq_class in cls.all_eq_classes:
+            if eq_class.class_name == "TEST non-accumulator register" or \
+                eq_class.class_name == "SHL/SAL":
+                # Must be 3 bits long as they will modify Reg/Opcode
+                # field inside ModR/M byte of instruction.
+                try:
+                    eq_class.members[:] = [bitarray(f"{int(mem.strip()[-1]):03b}")
+                                            for mem in eq_class.members]
+                except ValueError:
+                    print(f"ERROR! While parsing equivalent class members an error occured.",
+                          file=sys.stderr)
+                    sys.exit(102)
+                    
+            elif eq_class.class_name == "TEST/AND/OR":
+                pass
+                ########################### bytes.fromhex(hex_string[2:])
+                # eq_class.members[:] = [bitarray('0')
+                #                        if mem.strip()[-6:] == "r/m, r"
+                #                        else (bytes.fromhex(""), bitarray('1'))
+                #                        for mem in eq_class.members]
+            
+            elif eq_class.class_name == "SUB/XOR":
+                pass
+                ########################### bytes.fromhex(hex_string[2:])
+                # eq_class.members[:] = [bitarray('0')
+                #                        if mem.strip()[-6:] == "r/m, r"
+                #                        else (bytes.fromhex(""), bitarray('1'))
+                #                        for mem in eq_class.members]
+            
+            elif re.match(r"^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
+                          eq_class.class_name):
+                # 6, because 'r, r/m' string is 6 bytes long.
+                eq_class.members[:] = [bitarray('0')
+                                       if mem.strip()[-6:] == "r/m, r"
+                                       else bitarray('1')
+                                       for mem in eq_class.members]
+            
+            elif re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) 32-bit$",
+                          eq_class.class_name):
+                # Set Direction bit as bitarray with length equal to 1.
+                try:
+                    eq_class.members[:] = [bitarray(
+                                                f"{int(mem.strip()[-1]):b}")
+                                            for mem in eq_class.members]
+                except ValueError:
+                    print(f"ERROR! While parsing equivalent class members an error occured.",
+                          file=sys.stderr)
+                    sys.exit(102)
+                    
+            elif eq_class.class_name == "ADD negated":
+                pass
+            
+            elif eq_class.class_name == "SUB negated":
+                pass

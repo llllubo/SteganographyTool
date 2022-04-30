@@ -1,5 +1,5 @@
-from asyncore import read
 import os
+import re
 import sys
 import math
 import lzma
@@ -10,6 +10,7 @@ from bitarray import *
 from analyzer import Analyzer
 from eq_classes_processor import EqClassesProcessor
 import misc
+from my_instruction import MyInstruction
 
 
 class Embedder:
@@ -173,41 +174,75 @@ class Embedder:
                            bits_mess: bitarray) -> int:
         
         mem_len = len(eq_class.members)
-        # 1st try is to take maximum number of bits that
-        # can be embedded by current equivalent class.
-        max_bits = math.floor(math.log2(mem_len)) + 1
+        is_power_of_2 = (bin(mem_len).count("1") == 1)
+
+        if not is_power_of_2:
+            # If variable length encoding was used, 1st try is to take
+            # maximum number of bits that can be embedded by current
+            # equivalent class.
+            max_bits = math.ceil(math.log2(mem_len) - 1)
+        else:
+            # Fixed length encoding was used, therefore only max. number
+            # of bits will be tested.
+            max_bits = int(math.log2(mem_len))
         
-        res = None
-        # 1st try to find appropriate encoding with max. allowed length.
+        # Correctness of message length if last bits are going to be
+        # embedded -- zeros padding.
+        added_nulls = None
+        if max_bits > len(bits_mess):
+            added_nulls = bitarray(max_bits - len(bits_mess))
+            added_nulls.setall(0)
+            bits_mess.extend(added_nulls)
+        print(f"{mem_len} | {is_power_of_2} | {max_bits} | {added_nulls} | {len(bits_mess)}")
+        # 1st try to find appropriate encoding with max. allowed length
+        # and also the only one try if fixed length encoding was used.
         for idx, encoded_idx in enumerate(eq_class.encoded_idxs):
-            if encoded_idx == \
-                bits_mess[:max_bits]:
-                
-                res = idx
-        
+            if encoded_idx == bits_mess[:max_bits]:
+                return idx
+
         # 2nd try to find appropriate encoding with min. allowed length.
         # This has to always find useable encoding, if 1st try was
-        # unsuccessful.
-        if res is None:
+        # unsuccessful, in case of variable length encoding.
+        if not is_power_of_2:
             min_bits = max_bits - 1
             
+            # Pop zero padding if was added.
+            if added_nulls is not None:
+                bits_mess.pop()
+            
             for idx, encoded_idx in enumerate(eq_class.encoded_idxs):
-                if encoded_idx == \
-                    bits_mess[:min_bits]:
-                    
-                    res = idx
+                if encoded_idx == bits_mess[:min_bits]:
+                    return idx
                     
         ####################################### PREC
-        if res is None:
-            print("TOTO POJDE PREC -- KONTROLA NECHCENEJ CHYBY")
-                    
-        return res
+        print("TOTO POJDE PREC -- KONTROLA NECHCENEJ CHYBY")
+        sys.exit(101)
 
 
     @staticmethod
-    def __parse_shl_member(idx: int) -> None:
+    def __get_opcode_idx(instr: bytes, opcode: str) -> int:
+        # Return index of opcode within instruction bytes.
+        for idx, b in enumerate(instr):
+            if b == opcode:
+                return idx
+            
+            
+    @staticmethod
+    def __get_rex_prefix_idx() -> int:
+        # Returns index of REX prefix within instruction bytes.
         pass
-        print(f"{idx}")
+    
+    
+    @classmethod
+    def __get_instruction_bits(cls) -> bitarray:
+        pass
+    
+    
+    @classmethod
+    def __change_reg_opcode_field(cls) -> bitarray:
+        # Returns instruction bits with changed Reg/Opcode field inside
+        # ModR/M byte.
+        pass
 
     
     @classmethod
@@ -238,18 +273,19 @@ class Embedder:
             
             # For speed performance.
             eq_class = my_instr.eq_class
+            instr = my_instr.instruction
             
             # Instructions that don't have encoding LEGACY are skipped.
             # Legacy encoding for opcodes of instructions is mainly used
             # in each PE and ELF (32- and 64-bit) executables.
             if eq_class is not None and \
-                my_instr.instruction.encoding == EncodingKind.LEGACY:
+                instr.encoding == EncodingKind.LEGACY:
                 
-                op_code = my_instr.instruction.op_code()
+                op_code = instr.op_code()
                 
                 
                 fd.seek(my_instr.foffset)
-                print(f"{eq_class.class_name} | {my_instr.instruction} | {op_code.instruction_string} | {my_instr.foffset:x} | {fd.read(my_instr.instruction.len).hex()}")
+                print(f"{eq_class.class_name} | {my_instr.instruction} | {op_code.instruction_string} | {my_instr.foffset:x} | {fd.read(len(my_instr.instruction)).hex()}")
 
                 # print(f"op_code: {OpCodeInfo(my_instr.instruction.code).op_code:x}")
                 # print(f"op_code_len {OpCodeInfo(my_instr.instruction.code).op_code_len}")
@@ -275,10 +311,6 @@ class Embedder:
                 # if my_instr.instruction.op1_kind == OpKind.IMMEDIATE64:
                 #     print(f"immediate {my_instr.instruction.immediate(1)}")
                 # print(f"op_code() {my_instr.instruction.op_code()}") # -- vracia OpCodeInfo
-                # print()
-                # print()
-                # print()
-                # print()
                 
                 
                 
@@ -295,6 +327,9 @@ class Embedder:
                 # exactly same principle.
                 elif eq_class.class_name == "2 Bytes Long NOP" or \
                     eq_class.class_name == "3 Bytes Long NOP":
+                        
+                    ############ MUSIM ODSTRANIT NASLEDUJUCE NOPY Z LISTU
+                    # LEBO OSTAVAJU TAM AJ KED ICH UZ POUZIJEM PRI DETEKCII PRVEHO NOPU... ALEBO TO MOZEM ZMENIT V SELECTORE, ZMENIT NAZOV CLASSY ABY SA TU ITEROVALO LEN CEZ PRVY NOP VZDY..
 
                     # Find bits to embed according to the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
@@ -303,10 +338,8 @@ class Embedder:
                     fd.seek(my_instr.foffset)
                     fd.write(bytes.fromhex(eq_class.members[idx][2:]))
                     
-                    embedded_bits = eq_class.encoded_idxs[idx]
-                    
                     # Delete already embedded bits from list.
-                    del bits_mess[:len(embedded_bits)]
+                    del bits_mess[:len(eq_class.encoded_idxs[idx])]
                 
                 # Class does not encodes class members, as it does not
                 # have any. In this case, bits from message are simply
@@ -314,7 +347,7 @@ class Embedder:
                 elif eq_class.class_name == ">3 Bytes Long NOP":
 
                     # Get number of bits available for embedding.
-                    bits_cnt = misc.count_useable_bytes_from_nop(my_instr.instruction, bitness)
+                    bits_cnt = misc.count_useable_bytes_from_nop(instr, bitness)
                     # Take bits needed to embed.
                     bits_to_embed = bits_mess[:bits_cnt]
 
@@ -322,30 +355,48 @@ class Embedder:
                     b_cnt = bits_cnt // 8
                     
                     # Embed to the executable.
-                    pos = my_instr.foffset + (len(my_instr.instruction)-b_cnt)
+                    pos = my_instr.foffset + (len(instr) - b_cnt)
                     fd.seek(pos)
                     fd.write(bits_to_embed)
                     
                     # Delete already embedded bits from list.
                     del bits_mess[:bits_cnt]
                 
-                elif eq_class.class_name == "TEST non-accumulator register":
+                # These two classes can be merged as they modify only
+                # Reg/Opcode field inside ModR/M byte.
+                elif eq_class.class_name == "SHL/SAL" or \
+                    eq_class.class_name == "TEST non-accumulator register":
+                    
+                    # Read instruction bytes from file to be able to
+                    # modify it.
+                    fd.seek(my_instr.foffset)
+                    b_instr_fromf = fd.read(len(instr))
+                    
+                    # Convert read instruction from bytes to bits.
+                    bits_instr = bitarray()
+                    bits_instr.frombytes(b_instr_fromf)
+                    
+                    # Get and find an opcode of instruction.
+                    instr_opcode = OpCodeInfo(instr.code).op_code
+                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
+                                                      instr_opcode)
                     
                     # Find bits to embed according to the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
-                    
-                    # fd.seek(my_instr.foffset)
-                    # b_instr_fromf = fd.read(my_instr.instruction.len)
-                    # print(f"{b_instr_fromf}")
-                    
-                    # print(f"is_group {OpCodeInfo(my_instr.instruction.code).is_group}")
-                    # print(f"group_index {OpCodeInfo(my_instr.instruction.code).group_index}")                    
-                    # print(f"is_rm_group {OpCodeInfo(my_instr.instruction.code).is_rm_group}")
-                    # print(f"rm_group_index {OpCodeInfo(my_instr.instruction.code).rm_group_index}")
-                    # sys.exit()
-                    
-                    # embedded_bits = eq_class.encoded_idxs[idx]
-                    
+                    bits_to_embed = eq_class.members[idx]
+
+                    # Locate Reg/Opcode filed inside ModR/M byte.
+                    reg_field_offset = (opcode_idx + 1) * 8 + 2
+                    # Rewrite required bits inside instruction.
+                    bits_instr[reg_field_offset:(reg_field_offset + 3)] = \
+                        bits_to_embed
+
+                    # Embed to the executable.
+                    fd.seek(my_instr.foffset)
+                    fd.write(bits_instr)
+
+                    # Delete already embedded bits from list.
+                    del bits_mess[:len(eq_class.encoded_idxs[idx])]
                 
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
@@ -358,41 +409,68 @@ class Embedder:
                     pass
                     # my_instr.instruction.set_memory_base()
                     # my_instr.instruction.set_memory_index()
-                
-                elif eq_class.class_name == "SHL/SAL":
-                    pass                    
                     
-                    #
+                    # print(f"{OpCodeInfo(my_instr.instruction.code).op_code:x}")
+                    # print(f"{OpCodeInfo(my_instr.instruction.code).op_code_len}")
+                    # print(f"mandatory_prefix {OpCodeInfo(my_instr.instruction.code).mandatory_prefix:x}")
+                    # print(f"compatibility_mode {OpCodeInfo(my_instr.instruction.code).compatibility_mode}")
+                    # print(f"long_mode {OpCodeInfo(my_instr.instruction.code).long_mode}")
+                    # print(f"default_op_size64 {OpCodeInfo(my_instr.instruction.code).default_op_size64}")
+                    # sys.exit()
+                    
+                    # print(f"is_group {OpCodeInfo(my_instr.instruction.code).is_group}")
+                    # print(f"group_index {OpCodeInfo(my_instr.instruction.code).group_index}")                    
+                    # print(f"is_rm_group {OpCodeInfo(my_instr.instruction.code).is_rm_group}")
+                    # print(f"rm_group_index {OpCodeInfo(my_instr.instruction.code).rm_group_index}")
+                    # sys.exit()
                 
-                elif eq_class.class_name == "ADD 32-bit":
-                    pass
-                
-                elif eq_class.class_name == "SUB 32-bit":
-                    pass
-                
-                elif eq_class.class_name == "CMP 32-bit":
-                    pass
-                
-                elif eq_class.class_name == "AND 32-bit":
-                    pass
-                
-                elif eq_class.class_name == "OR 32-bit":
-                    pass
-                
-                elif eq_class.class_name == "XOR 32-bit":
-                    pass
-                
-                elif eq_class.class_name == "ADC 32-bit":
-                    pass
-                
-                elif eq_class.class_name == "SBB 32-bit":
-                    pass
+                elif re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) 32-bit$",
+                          eq_class.class_name):
+                    
+                    # Read instruction bytes from file to be able to
+                    # modify it.
+                    fd.seek(my_instr.foffset)
+                    b_instr_fromf = fd.read(len(instr))
+                    
+                    # Convert read instruction from bytes to bits.
+                    bits_instr = bitarray()
+                    bits_instr.frombytes(b_instr_fromf)
+                    
+                    # Get and find an opcode of instruction.
+                    instr_opcode = OpCodeInfo(instr.code).op_code
+                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
+                                                      instr_opcode)
+
+                    # Find Direction bit to embed according to the
+                    # encoding.
+                    idx = cls.__find_encoded_idx(eq_class, bits_mess)
+                    dir_bit = eq_class.members[idx]
+                    
+                    # Rewrite Direction bit inside opcode of instruction.
+                    dir_bit_offset = (opcode_idx * 8) + 6
+                    bits_instr[dir_bit_offset:dir_bit_offset + 1] = dir_bit
+
+                    # Embed to the executable.
+                    fd.seek(my_instr.foffset)
+                    fd.write(bits_instr)
+                    
+                    # Always 1, because embedded was only Direction bit.
+                    del bits_mess[:1]
                 
                 elif eq_class.class_name == "TEST/AND/OR":
                     pass
+                    # TEST mam nastaveny na klasicky OPCODE 0x85, ale pri
+                    # operandoch al,al atd (reg8 -- pozor aj r12b atd) je OPCODE 0x85-0x1==0x84
+                    
+                    # Podobne s AND.. klasicke 0x21, reg8 0x21-0x1==0x20
+                    # Podobne s OR.. klasicke 0x09, reg8 0x09-0x1==0x08
                 
                 elif eq_class.class_name == "SUB/XOR":
                     pass
+                    # SUB mam nastaveny na klasicky OPCODE 0x29, ale pri
+                    # operandoch al,al atd (reg8 -- pozor aj r12b atd) je OPCODE 0x29-0x1==0x28
+                    
+                    # Podobne s XOR.. klasicke 0x31, reg8 0x31-0x1==0x30
                 
                 elif eq_class.class_name == "MOV":
                     ### POZOR MOV sklbit so scheduling..
@@ -404,37 +482,63 @@ class Embedder:
                     ##### ^^ TOTO PLATI PRE VSETKY 'mnemo' CLASSY
                     pass
                 
-                elif eq_class.class_name == "ADD":
-                    pass
-                
-                elif eq_class.class_name == "SUB":
-                    pass
-                
-                elif eq_class.class_name == "AND":
-                    pass
-                
-                elif eq_class.class_name == "OR":
-                    pass
-                
-                elif eq_class.class_name == "XOR":
-                    pass
-                
-                elif eq_class.class_name == "CMP":
-                    pass
-                
-                elif eq_class.class_name == "ADC":
-                    pass
-                
-                elif eq_class.class_name == "SBB":
+                elif re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
+                          eq_class.class_name):
+                    ############ VYMENA OPERANDOV ak menim strany r, r/m
                     pass
                 
                 elif eq_class.class_name == "ADD negated":
                     ########## nulu nemozem negovat, zachovam ju
                     pass
+                    # ADD aj SUB su nastavene na klasicky OPCODE 0x83, ale pri
+                    # operandoch al,al atd (reg8 -- pozor aj r12b atd) je OPCODE 0x83-0x3==0x80
+                    # NEGACIA imm je dvojkovy doplnek
+                    # ^^ 0x42 => -0x42 == (extended sign)FFF..BE
+                    
+                    # ADD ma Reg/Opcode 000 a SUB ma Reg/Opcode 101
+                    # ^^ TOTO SA MENI
+                    
+                    # Read instruction bytes from file to be able to
+                    # modify it.
+                    fd.seek(my_instr.foffset)
+                    b_instr_fromf = fd.read(len(instr))
+                    
+                    # Convert read instruction from bytes to bits.
+                    bits_instr = bitarray()
+                    bits_instr.frombytes(b_instr_fromf)
+                    
+                    # Get and find an opcode of instruction.
+                    instr_opcode = OpCodeInfo(instr.code).op_code
+                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
+                                                      instr_opcode)
+                    print(f"instr: {instr}\noperand_size: {OpCodeInfo(instr.code).operand_size}")
+                    # sys.exit()
+                    # Find Direction bit to embed according to the
+                    # encoding.
+                    # idx = cls.__find_encoded_idx(eq_class, bits_mess)
+                    # dir_bit = eq_class.members[idx]
+                    
+                    # Rewrite Direction bit inside opcode of instruction.
+                    # dir_bit_offset = (opcode_idx * 8) + 6
+                    # bits_instr[dir_bit_offset:dir_bit_offset + 1] = dir_bit
+
+                    # Embed to the executable.
+                    # fd.seek(my_instr.foffset)
+                    # fd.write(bits_instr)
+                    
+                    # Always 1, because embedded was only Direction bit.
+                    # del bits_mess[:1]
                 
                 elif eq_class.class_name == "SUB negated":
                     ########## nulu nemozem negovat, zachovam ju
                     pass
+                    # ADD aj SUB su nastavene na klasicky OPCODE 0x83, ale pri
+                    # operandoch al,al atd (reg8 -- pozor aj r12b atd) je OPCODE 0x83-0x3==0x80
+                    # NEGACIA imm je dvojkovy doplnek
+                    # ^^ 0x42 => -0x42 == (extended sign)FFF..BE
+                    
+                    # ADD ma Reg/Opcode 000 a SUB ma Reg/Opcode 101
+                    # ^^ TOTO SA MENI
                 
             else:
                 print()
@@ -446,9 +550,11 @@ class Embedder:
                 print()
                 
             ###################################### OK ???
-            if bits_mess is None:
+            print(f"{bits_mess}")
+            print()
+            if not len(bits_mess):
                 # All bits were embedded (whole message).
-                print(f"{bits_mess}, KONEC")
+                print(f"KONEC")
                 break
             
         fd.close()

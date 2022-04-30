@@ -10,6 +10,7 @@ Project: Bachelor's thesis, BUT FIT Brno
  
 
 import sys
+import re
 import time
 from iced_x86 import *
 
@@ -50,7 +51,20 @@ class Main:
            args.mode == "analyze":
             inputf = args.cover_file
         else:
-            inputf = args.stego_file            
+            inputf = args.stego_file
+            
+        
+        # hex_string = "0x82"
+        # mess = bytes.fromhex(hex_string[2:])
+        # try:
+        #     fd = open("exace-testing/AcroRd32.exe", "r+b")
+        # except IOError:
+        #     print("ERROR! ", file=sys.stderr)
+        # else:
+        #     # fd.seek(offset)
+        #     fd.seek(0x19f4d4)
+        #     fd.write(mess)
+        #     fd.close()
         
         # Disassemble all instructions from executable.
         # Needed to keep all of them because of flags checking.
@@ -89,7 +103,8 @@ class Main:
 
         #     got_op_code = my_instr.instruction.op_code()
 
-        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15} | {my_instr.eq_class}")
+        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15}", end=" | ")
+        #     print(f"{my_instr.eq_class.class_name}")
         #     print(f"{my_instr.instruction}")
         #     print()
         #     if my_instr.instruction.encoding != EncodingKind.LEGACY:
@@ -101,17 +116,23 @@ class Main:
         #         print()
         #         print()
         #         print()
-        #         print()
+        #         print()   569954   19f4d4    AND r/m8, imm8       80 /4 ib         3 |  80 e1 1f        | AND 32-bit
+        # return
 
         ##### TESTOVANIE
         # opat sa disassembluje vstupny subor a printnu sa instrukcie..
         # chcem zmenu len tam kde som ju spravil.. diff
         
+        # If there was not Analyze mode given, all necessary operations
+        # over equivalent classes are done.
         if args.mode != "a" and args.mode != "analyze":
             # Encode indexes of each class members. They will be used
             # while embedding/extracting/resetting.
             EqClassesProcessor.encode_members_indexes()
-        
+            # Parse equivalent class members if needed (this is not
+            # applied for example on NOP classes).
+            EqClassesProcessor.parse_members()
+        # return
         ######### POZOR NA ENDIANNESS, NEVIEM CI SOM DOBRE TVORIL BYTES..
         
         if args.mode == "e" or args.mode == "embed":
