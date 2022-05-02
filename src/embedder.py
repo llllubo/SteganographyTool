@@ -1,4 +1,3 @@
-from ast import Eq
 import os
 import re
 import sys
@@ -422,36 +421,70 @@ class Embedder:
             
         return b_new_opcode
 
+
+    @staticmethod
+    def __make_ADD_SUB_opcode(instr: Instruction,
+                                opcode_idx: int,
+                                bits_to_embed: bitarray,
+                                bits_instr: bitarray) -> None:
+        # Embed ADD or SUB OPCODE according to the next encoding bits.
+        # There is special case of AL register operand when OPCODES of
+        # ADD and SUB differ and they must be changed. Also, in this
+        # case there is no ModR/M byte, so Reg/Opcode can not be
+        # modified. Otherwise, OPCODES stay same and Reg/Opcode field of
+        # ModR/M byte is changed only.
+        # Last parameter of function is going to be changed and then
+        # will be used outside function.
+        
+        if instr.op0_kind == OpKind.REGISTER and \
+            instr.op0_register == Register.AL:
+            # Register AL has special OPCODE without ModR/M.
+            
+            new_opcode = bitarray()
+            if bits_to_embed == bitarray('000'):
+                # ADD is going to be embedded.
+                new_opcode.frombytes(bytes.fromhex("04"))
+            else:
+                # SUB is going to be embedded.
+                new_opcode.frombytes(bytes.fromhex("2c"))
+            
+            opcode_offset = opcode_idx * 8
+            opcode_len = OpCodeInfo(instr.code).op_code_len * 8
+            bits_instr[opcode_offset:(opcode_offset + opcode_len)] = new_opcode
+        else:
+            # Locate Reg/Opcode field inside ModR/M byte.
+            reg_field_offset = (opcode_idx + 1) * 8 + 2
+            # Rewrite required bits inside instruction.
+            bits_instr[reg_field_offset:(reg_field_offset + 3)] = bits_to_embed
+    
     
     @staticmethod
     def __twos_complement(instr: Instruction, op_size: int) -> bytes:
     
-        print(f"{instr.immediate(1):x}")
+        print(f"instr.immediate(1):x -- {instr.immediate(1):x}")
     
-        bits_imm = bitarray()
-        bits_imm.frombytes(instr.immediate(1).to_bytes(op_size,
-                                                       byteorder="little",
-                                                       signed=True))
-        print(f"{bits_imm}")
-        # bits_imm = ~bits_imm
+        # bits_imm = bitarray()
+        # bits_imm.frombytes(instr.immediate(1).to_bytes(op_size,
+        #                                                byteorder="little",
+        #                                                signed=True))
         # print(f"{bits_imm}")
-        # bits_imm += 1
-        # print(f"{bits_imm}")
-    
+        # # bits_imm = ~bits_imm
+        # # print(f"{bits_imm}")
+        # # bits_imm += 1
+        # # print(f"{bits_imm}")
         
-        sys.exit()
-        print(f"{imm:x}")
+        # # sys.exit()
+        # print(f"{imm:x}")
         
-        # bits_number = 
-        # # bits_number = int(f"{instr.immediate(1):08b}")
-        # flipped_bits_number = ~ bits_number
-        # flipped_bits_number = flipped_bits_number + 1
-        # str_twos_complement = str(flipped_bits_number)
+        bits_number = int("{0:08b}".format(instr.immediate(1)))
+        flipped_bits_number = ~ bits_number
+        flipped_bits_number = flipped_bits_number + 1
+        str_twos_complement = str(flipped_bits_number)
             
-        # return int(str_twos_complement, 2).to_bytes(
-        #     op_size,
-        #     byteorder="little",
-        #     signed=True)
+        return int(str_twos_complement, 2).to_bytes(
+            op_size,
+            byteorder="little",
+            signed=True)
         
         # imm = instr.immediate(1)
         # bits_size = op_size * 8
@@ -470,6 +503,7 @@ class Embedder:
     def __get_imm_idx(instr_fromf: bytes, imm: int, op_size: int) -> int:
         # Get index position of immediate operand inside instruction.
         b_imm = imm.to_bytes(op_size, byteorder="little", signed=True)
+        print(f"b_imm: {b_imm.hex()}")
         return instr_fromf.find(b_imm)
 
 
@@ -542,6 +576,8 @@ class Embedder:
             print(f"ERROR! Can not open cover file for embedding: {fexe}",
                   file=sys.stderr)
             sys.exit(101)
+            
+        tmpppppppppp = 0
         
         for instr_idx, my_instr in enumerate(potential_my_instrs):
             # print()
@@ -920,9 +956,10 @@ class Embedder:
                     # print(f"{fd.read(len(instr)).hex()}")
                     # sys.exit()
                 
-                elif eq_class.class_name == "ADD negated" or \
+                if eq_class.class_name == "ADD negated" or \
                     eq_class.class_name == "SUB negated":
                     continue
+                    print()
                     ## nulu nemozem negovat, zachovam ju
                     # NEGACIA imm je dvojkovy doplnek
                     # ^^ 0x42 => -0x42 == (extended sign)FFF..BE
@@ -946,32 +983,22 @@ class Embedder:
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
                     bits_to_embed = eq_class.members[idx]
                     
-                    # operand_size = OpCodeInfo(instr.code).operand_size
-                    # print(f"class: {eq_class.class_name}\ninstr: {instr}\nb_instr_fromf: {b_instr_fromf.hex()}\noperand_size: {operand_size}\nbits_to_embed: {bits_to_embed}\ninstr_opcode: {instr_opcode:x}, {opcode_idx}\nbits_instr: {bits_instr}")
+                    operand_size = OpCodeInfo(instr.code).operand_size
+                    print(f"class: {eq_class.class_name}\ninstr: {instr}\nb_instr_fromf: {b_instr_fromf.hex()}\noperand_size: {operand_size}\nbits_to_embed: {bits_to_embed}\ninstr_opcode: {instr_opcode:x}, {opcode_idx}\nbits_instr: {bits_instr}")
                     
-                    if instr.op0_kind == OpKind.REGISTER and \
-                        instr.op0_register == Register.AL:
-                        # Register AL has special OPCODE without ModR/M.
-                        
-                        new_opcode = bitarray()
-                        if bits_to_embed == bitarray('000'):
-                            # ADD is going to be embedded.
-                            new_opcode.frombytes(bytes.fromhex("04"))
-                        else:
-                            # SUB is going to be embedded.
-                            new_opcode.frombytes(bytes.fromhex("2c"))
-                        
-                        opcode_offset = opcode_idx * 8
-                        opcode_len = OpCodeInfo(instr.code).op_code_len * 8
-                        bits_instr[opcode_offset:(opcode_offset + opcode_len)] = new_opcode                        
-                    else:
-                        # Locate Reg/Opcode field inside ModR/M byte.
-                        reg_field_offset = (opcode_idx + 1) * 8 + 2
-                        # Rewrite required bits inside instruction.
-                        bits_instr[reg_field_offset:(reg_field_offset + 3)] = \
-                            bits_to_embed
-
-                    # Two's Complement of immediate (always last bytes).
+                    # Embed ADD or SUB according to next encoding bits.
+                    # There is special case for 1 byte long AL register
+                    # operand which is also handled.
+                    cls.__make_ADD_SUB_opcode(instr,
+                                              opcode_idx,
+                                              bits_to_embed,
+                                              bits_instr)
+                
+                    # Make two's Complement of immediate (always last
+                    # bytes) if required - if ADD was changed to SUB and
+                    # vice versa. Also zero immediate can not be negated
+                    # as it has only one representation in two's
+                    # complement code.
                     if instr.immediate(1) != 0 and \
                         ( (
                             instr.mnemonic == Mnemonic.ADD and \
@@ -989,13 +1016,13 @@ class Embedder:
                         if op_size == 0:
                             # For 1 byte long operands function returns 0.
                             op_size = 1
-                        # elif op_size == 8:
-                        #     # For all ADD/SUB instructions are always
-                        #     # 64 bits long immediates truncated to 32.
-                        #     # It can be done as Stack instructions are
-                        #     # not supported in this program (they do not
-                        #     # truncate 64 bits to 32).
-                        #     op_size = 4
+                        elif op_size == 8:
+                            # For all ADD/SUB instructions are always
+                            # 64 bits long immediates truncated to 32.
+                            # It can be done as Stack instructions are
+                            # not supported in this program (they do not
+                            # truncate 64 bits to 32).
+                            op_size = 4
                         print(f"{my_instr.foffset:x}, {op_size}")
                         # Make 2's complement to negate immediate.
                         b_imm_compl = cls.__twos_complement(instr, op_size)
@@ -1023,7 +1050,6 @@ class Embedder:
 
                     # Delete already embedded bits from list.
                     del bits_mess[:len(eq_class.encoded_idxs[idx])]
-                    
                     # sys.exit()
                                         
                 

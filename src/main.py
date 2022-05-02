@@ -10,8 +10,8 @@ Project: Bachelor's thesis, BUT FIT Brno
  
 
 import sys
-import re
 import time
+from bitarray import bitarray
 from iced_x86 import *
 
 from args_parser import ArgsParser
@@ -21,6 +21,7 @@ from extractor import Extractor
 from analyzer import Analyzer
 from selector import Selector
 from eq_classes_processor import EqClassesProcessor
+from misc import *
 
 
 __author__ = "Ľuboš Bever"
@@ -164,8 +165,10 @@ class Main:
             print("---------------------------------------------------")
             
             ############extrakcia
+            bits_extracted = bitarray()
             
             # extract xorovanu dlzku dat -- 32B
+            Extractor.extract(inputf, SIZE_OF_DATA_LEN, bits_extracted)
             
             # UnXOR extracted length of data with password.
             data_len = Extractor.unxor_data_len(b_xored_len)

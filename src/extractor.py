@@ -1,6 +1,7 @@
 import os
 import sys
 import lzma
+from bitarray import bitarray
 from cryptography.fernet import (Fernet, InvalidToken)
 import misc
 
@@ -8,6 +9,21 @@ import misc
 class Extractor:
     __b_key = None
     __b_passwd = None
+    
+    
+    @classmethod
+    def extract(cls, fexe: str, n: int, bits_mess: bitarray) -> None:
+        # n - Number of bits to extract.
+        
+        try:
+            fd = open(fexe, "rb")
+        except IOError:
+            print(f"ERROR! Can not open stego-file for extracting: {fexe}",
+                  file=sys.stderr)
+            sys.exit(101)
+            
+        
+    
     
     @classmethod
     def unxor_data_len(cls, xored_len: bytes) -> int:
