@@ -262,6 +262,26 @@ class Embedder:
             # There is no REX prefix.
             return -1
         
+    
+    @classmethod
+    def __should_swap_mov(cls,
+                          instr_mov0: MyInstruction,
+                          instr_mov1: MyInstruction,
+                          idx: int) -> bool:
+        # Find out if base and index memory registers should be swapped
+        # according to desired order determined by next encoding bit of
+        # message.
+        
+        # if instr.eq_class.members[idx] == "Ascending" and \
+        #     :
+        #     return True
+        
+        # elif instr.eq_class.members[idx] == "Descending" and \
+        #     :
+        #     return True
+        
+        return False
+        
         
     @classmethod
     def __should_swap_base_index(cls, instr: MyInstruction, idx: int) -> bool:
@@ -455,6 +475,21 @@ class Embedder:
             sys.exit(10000)
             
         return skip
+    
+    
+    @staticmethod
+    def __lexicographic_mov_sort(mov_string: str):
+        # Lexicographic sorter is designed for MOV scheduling. It has 1
+        # imperfection and that is unability to sort two different but
+        # lexicographiclly same instrucion strings.
+        # E.g. MOV [rax], rbx; MOV [rbx], rax.
+        # Example above is allowed by selector, but this function
+        # determines they are same. This scheduling will be skipped if
+        # occurs.
+        # Also, this imprefection has influence on embedding capacity.
+        # As practically was tested, this case is extremely rare,
+        # therefore average capacity is not changed and remains set to 1.
+        return sorted(sorted(mov_string), key=str.upper)
 
     
     @classmethod
@@ -473,6 +508,8 @@ class Embedder:
         # skipped as they were already used by first instruction
         # from their group (3 and 2 Bytes Long NOP classes).
         skip = 0
+        # Skip flag determines first occurence of scheduling MOV if True.
+        skip_mov = False
         
         bits_mess = bitarray(endian="little")
         bits_mess.frombytes(mess)
@@ -509,85 +546,84 @@ class Embedder:
             
             # Instructions that don't have encoding LEGACY are skipped.
             # Legacy encoding for opcodes of instructions is mainly used
-            # in each PE and ELF (32- and 64-bit) executables.
+            # in each PE and ELF (32- and 64-bit) executables and others
+            # encodings are very rare.
             if eq_class is not None and \
                 instr.encoding == EncodingKind.LEGACY:
                 
                 # op_code = instr.op_code()
                 # fd.seek(my_instr.foffset)
                 # print(f"{eq_class.class_name} | {my_instr.instruction} | {op_code.instruction_string} | {my_instr.foffset:x} | {fd.read(len(my_instr.instruction)).hex()}")
-
-
-                # Class does not encodes class members, as it does not
-                # have any. Encoding is lexicographic order of used
-                # instructions strings.
-                if eq_class.class_name == "MOV Scheduling" or \
-                    my_instr.mov_scheduling_flag:
-
-                    # Find out desired order for base-index according to
-                    # the encoding.
-                    idx = cls.__find_encoded_idx(eq_class, bits_mess)
-
-                    # # Decide if base and index registers should be
-                    # # swapped according to the next secret message bits
-                    # # or if they are in the right order.
-                    # if not cls.__should_swap_base_index(my_instr, idx):
-                    #     continue
-
-                    # # Read instruction bytes from file to be able to
-                    # # modify it.
-                    # fd.seek(my_instr.foffset)
-                    # b_instr_fromf = fd.read(len(instr))
+                
+                if re.match(r"^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
+                          eq_class.class_name):
+                    ############## POZOR MOV sklbit so scheduling..
+                    ### VYMENA OPERANDOV ak menim strany r, r/m
                     
-                    # # Convert read instruction from bytes to bits.
-                    # bits_instr = bitarray()
-                    # bits_instr.frombytes(b_instr_fromf)
+                    if instr.mnemonic == Mnemonic.MOV:
+                        pass
+                        # print(f"MOV")
+
+                    # Read instruction bytes from file to be able to
+                    # modify it.
+                    fd.seek(my_instr.foffset)
+                    b_instr_fromf = fd.read(len(instr))
                     
-                    # # print()
-                    # # print(f"{instr}")
-                    # # print(f"{b_instr_fromf}, {my_instr.foffset:x}")
-                    # # print(f"{b_instr_fromf.hex()}")
+                    # Convert read instruction from bytes to bits.
+                    bits_instr = bitarray()
+                    bits_instr.frombytes(b_instr_fromf)
                     
-                    # # Get and find an opcode of instruction.
-                    # instr_opcode = OpCodeInfo(instr.code).op_code
+                    # print(f"{b_instr_fromf.hex()}, {my_instr.foffset}")
+                    
+                    # Get and find an opcode of instruction.
+                    instr_opcode = OpCodeInfo(instr.code).op_code
                     # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
-                    # opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                    #                                   instr_opcode)
+                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
+                                                      instr_opcode)
                     
-                    # rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
-                    # # print(f"REX: {rex_idx}")
-                    # # print(f"{bits_instr}")
+                    # Find Direction bit to embed according to the
+                    # encoding.
+                    idx = cls.__find_encoded_idx(eq_class, bits_mess)
+                    new_dir_bit = eq_class.members[idx]
                     
-                    # # Swap registers.
-                    # if not cls.__swap_base_index(rex_idx,
-                    #                              opcode_idx,
-                    #                              instr_opcode_len,
-                    #                              bits_instr):
-                    #     # Something goes wrong and SIB byte sign is not
-                    #     # ok - instruction is not used for embedding.
-                    #     continue
+                    # print(f"{new_dir_bit}, {opcode_idx}, {instr_opcode:x}, {idx}")
                     
-                    # # Embed to the executable.
-                    # fd.seek(my_instr.foffset)
-                    # fd.write(bits_instr)
+                    #### mam prepisat bit? skontrolovat aky tam je a ci sa meni aby ak ano som zmenil aj operandy + ci je rex ak hej aj tam zamenit bity..
                     
-                    # # fd.seek(my_instr.foffset)
-                    # # print(f"{fd.read(len(instr)).hex()}")
-                    # # sys.exit()
+                    dir_bit_offset = (opcode_idx * 8) + 6
+                    if bits_instr[dir_bit_offset:dir_bit_offset + 1] == \
+                        new_dir_bit:
+                        # Delete embedded Direction bit.
+                        del bits_mess[:len(eq_class.encoded_idxs[idx])]
+                        continue
+                    
+                    # Direction bit is going to be changed.
+                    rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
 
-                    # # Delete already embedded bit from list.
-                    # del bits_mess[:1]
+                    # Exchange Reg/Opcode and rm field of ModR/M byte.
+                    cls.__swap_rm_r_operands(rex_idx,
+                                            opcode_idx,
+                                            bits_instr)
                     
-                if eq_class.class_name == "MOV":
-                    ### POZOR MOV sklbit so scheduling..
-                    ############ VYMENA OPERANDOV ak menim strany r, r/m
-                    pass
-                    if 
+                    # Rewrite Direction bit inside opcode of instruction.
+                    bits_instr[dir_bit_offset:dir_bit_offset + 1] = new_dir_bit
+                    
+                    # Embed to the executable.
+                    fd.seek(my_instr.foffset)
+                    fd.write(bits_instr)
+                    
+                    # Always 1, because embedded was only Direction bit.
+                    del bits_mess[:len(eq_class.encoded_idxs[idx])]
+                    
+                    # fd.seek(my_instr.foffset)
+                    # print(f"{fd.read(len(instr)).hex()}")
+                    # sys.exit()
                 
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
                 # registers name.
                 if eq_class.class_name == "Swap base-index registers":
+                    ############## POZOR sklbit s MOV scheduling..
                     ## SWAP aj registers bits in REX ked su..
                     
                     # Find out desired order for base-index according to
@@ -644,10 +680,96 @@ class Embedder:
 
                     # Delete already embedded bit from list.
                     del bits_mess[:len(eq_class.encoded_idxs[idx])]
+                    
+                # Class does not encodes class members, as it does not
+                # have any. Encoding is lexicographic order of used
+                # instructions strings.
+                if eq_class.class_name == "MOV Scheduling" or \
+                    my_instr.mov_scheduling_flag:
+                        
+                    if not skip_mov:
+                        skip_mov = True
+                    else:
+                        skip_mov = False
+
+                    if my_instr.mov_scheduling_flag:
+                        print(f"f: {instr}, {eq_class.class_name}")
+                    else:
+                        print(f"{instr}, {eq_class.class_name}")
+                    print(f"{my_instr.foffset:x}, {len(instr)}")
+                    
+                    mov0 = f"{my_instr.instruction}"
+                    mov1 = f"{potential_my_instrs[instr_idx + 1].instruction}"
+                    if cls.__lexicographic_mov_sort(mov0) == \
+                        cls.__lexicographic_mov_sort(mov1) and \
+                            skip_mov:
+                        print(".................SAME")
+                    
+                    if not skip_mov:
+                        print()
+                    continue
+
+                    # Find out desired order for MOVs according to
+                    # the encoding.
+                    idx = cls.__find_encoded_idx(eq_class, bits_mess)
+
+                    # Decide if current and next MOVs should be swapped
+                    # according to the next secret message bits or if
+                    # they are in the right order.
+                    if not cls.__should_swap_mov(my_instr,
+                                                 potential_my_instrs[instr_idx + 1],
+                                                 idx):
+                        # Delete already embedded order bit from list.
+                        del bits_mess[:len(eq_class.encoded_idxs[idx])]
+                        continue
+
+                    # # Read instruction bytes from file to be able to
+                    # # modify it.
+                    # fd.seek(my_instr.foffset)
+                    # b_instr_fromf = fd.read(len(instr))
+                    
+                    # # Convert read instruction from bytes to bits.
+                    # bits_instr = bitarray()
+                    # bits_instr.frombytes(b_instr_fromf)
+                    
+                    # # print()
+                    # # print(f"{instr}")
+                    # # print(f"{b_instr_fromf}, {my_instr.foffset:x}")
+                    # # print(f"{b_instr_fromf.hex()}")
+                    
+                    # # Get and find an opcode of instruction.
+                    # instr_opcode = OpCodeInfo(instr.code).op_code
+                    # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
+                    # opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
+                    #                                   instr_opcode)
+                    
+                    # rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
+                    # # print(f"REX: {rex_idx}")
+                    # # print(f"{bits_instr}")
+                    
+                    # # Swap registers.
+                    # if not cls.__swap_base_index(rex_idx,
+                    #                              opcode_idx,
+                    #                              instr_opcode_len,
+                    #                              bits_instr):
+                    #     # Something goes wrong and SIB byte sign is not
+                    #     # ok - instruction is not used for embedding.
+                    #     continue
+                    
+                    # # Embed to the executable.
+                    # fd.seek(my_instr.foffset)
+                    # fd.write(bits_instr)
+                    
+                    # # fd.seek(my_instr.foffset)
+                    # # print(f"{fd.read(len(instr)).hex()}")
+                    # # sys.exit()
+
+                    # # Delete already embedded bit from list.
+                    # del bits_mess[:1]
                 
                 # Classes can be together as their usage is based on
                 # exactly same principle.
-                elif eq_class.class_name == "2 Bytes Long NOP" or \
+                if eq_class.class_name == "2 Bytes Long NOP" or \
                     eq_class.class_name == "3 Bytes Long NOP":
                         
                     # Set skip flag for next instructions skipping.
@@ -790,65 +912,6 @@ class Embedder:
                     fd.write(b_new_opcode)
 
                     # Delete already embedded bits from list.
-                    del bits_mess[:len(eq_class.encoded_idxs[idx])]
-                    
-                    # fd.seek(my_instr.foffset)
-                    # print(f"{fd.read(len(instr)).hex()}")
-                    # sys.exit()
-                
-                elif re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
-                          eq_class.class_name):
-                    ### VYMENA OPERANDOV ak menim strany r, r/m
-
-                    # Read instruction bytes from file to be able to
-                    # modify it.
-                    fd.seek(my_instr.foffset)
-                    b_instr_fromf = fd.read(len(instr))
-                    
-                    # Convert read instruction from bytes to bits.
-                    bits_instr = bitarray()
-                    bits_instr.frombytes(b_instr_fromf)
-                    
-                    # print(f"{b_instr_fromf.hex()}, {my_instr.foffset}")
-                    
-                    # Get and find an opcode of instruction.
-                    instr_opcode = OpCodeInfo(instr.code).op_code
-                    # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
-                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                                                      instr_opcode)
-                    
-                    # Find Direction bit to embed according to the
-                    # encoding.
-                    idx = cls.__find_encoded_idx(eq_class, bits_mess)
-                    new_dir_bit = eq_class.members[idx]
-                    
-                    # print(f"{new_dir_bit}, {opcode_idx}, {instr_opcode:x}, {idx}")
-                    
-                    #### mam prepisat bit? skontrolovat aky tam je a ci sa meni aby ak ano som zmenil aj operandy + ci je rex ak hej aj tam zamenit bity..
-                    
-                    dir_bit_offset = (opcode_idx * 8) + 6
-                    if bits_instr[dir_bit_offset:dir_bit_offset + 1] == \
-                        new_dir_bit:
-                        # Delete embedded Direction bit.
-                        del bits_mess[:len(eq_class.encoded_idxs[idx])]
-                        continue
-                    
-                    # Direction bit is going to be changed.
-                    rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
-
-                    # Exchange Reg/Opcode and rm field of ModR/M byte.
-                    cls.__swap_rm_r_operands(rex_idx,
-                                            opcode_idx,
-                                            bits_instr)
-                    
-                    # Rewrite Direction bit inside opcode of instruction.
-                    bits_instr[dir_bit_offset:dir_bit_offset + 1] = new_dir_bit
-                    
-                    # Embed to the executable.
-                    fd.seek(my_instr.foffset)
-                    fd.write(bits_instr)
-                    
-                    # Always 1, because embedded was only Direction bit.
                     del bits_mess[:len(eq_class.encoded_idxs[idx])]
                     
                     # fd.seek(my_instr.foffset)
