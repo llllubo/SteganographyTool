@@ -50,6 +50,19 @@ class Selector:
     
     
     @staticmethod
+    def __is_stack_reg(instr: Instruction) -> bool:
+        if instr.op0_kind == OpKind.REGISTER and \
+            (
+                instr.op0_register == Register.RSP or \
+                instr.op0_register == Register.ESP or \
+                instr.op0_register == Register.SP or \
+                instr.op0_register == Register.SPL
+            ):
+            return True
+        return False
+    
+    
+    @staticmethod
     def __liveness_flags_detection(all_instrs: list,
                                    my_instr: MyInstruction,
                                    rflags_to_check: int,
@@ -829,7 +842,8 @@ class Selector:
                 elif re.match(
                         r'^ADD [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
-                    ) and instr.immediate(1) >= 0:
+                    ) and instr.immediate(1) >= 0 and \
+                        not cls.__is_stack_reg(instr):
                     # Must check because of mode 'ext-sub-nops' where
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but
@@ -860,7 +874,8 @@ class Selector:
                 elif re.match(
                         r'^SUB [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
-                    ) and instr.immediate(1) < 0:
+                    ) and instr.immediate(1) < 0 and \
+                        not cls.__is_stack_reg(instr):
                     # Must check because of mode 'ext-sub-nops' where
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but
@@ -890,7 +905,8 @@ class Selector:
                 elif re.match(
                         r'^SUB [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
-                    ) and instr.immediate(1) >= 0:
+                    ) and instr.immediate(1) >= 0 and \
+                        not cls.__is_stack_reg(instr):
                     # Must check because of mode 'ext-sub-nops' where
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but
@@ -921,7 +937,8 @@ class Selector:
                 elif re.match(
                         r'^ADD [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
                         op_code.instruction_string
-                    ) and instr.immediate(1) < 0:
+                    ) and instr.immediate(1) < 0 and \
+                        not cls.__is_stack_reg(instr):
                     # Must check because of mode 'ext-sub-nops' where
                     # class 'swap-base-index' (2nd part of 'if'
                     # statement) can take same instruction earlier, but

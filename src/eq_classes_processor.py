@@ -1,5 +1,6 @@
 import json
 from multiprocessing.sharedctypes import Value
+from socket import AI_PASSIVE
 import sys
 import re
 import math
@@ -136,10 +137,6 @@ class EqClassesProcessor:
                         # This must be computed for every instruction
                         # separately, therefore 0.0 for now.
                         cap = 0.0
-                        
-                    elif eq_class_name == "MOV Scheduling" or \
-                        eq_class_name == "Swap base-index registers":
-                        cap = 1.0
                     
                     else:
                         cap = cls.__compute_avg_cap(obj_eq_class['Members'])
@@ -187,7 +184,17 @@ class EqClassesProcessor:
         # Parse certain members to bitarrays required to embed or to
         # extract. Then Embedder and Extractor will just pick this bits.
         for eq_class in cls.all_eq_classes:
-            if eq_class.class_name == "TEST non-accumulator register" or \
+            
+            if eq_class.class_name == "MOV Scheduling" or \
+                eq_class.class_name == "Swap base-index registers":
+                
+                for mem in eq_class.members:
+                    if not re.match(r'^(?:Ascending|Descending)$',mem.strip()):
+                        print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
+                            file=sys.stderr)
+                        sys.exit(102) 
+            
+            elif eq_class.class_name == "TEST non-accumulator register" or \
                 eq_class.class_name == "SHL/SAL":
                 # Must be 3 bits long as they will modify Reg/Opcode
                 # field inside ModR/M byte of instruction.
@@ -199,44 +206,150 @@ class EqClassesProcessor:
                           file=sys.stderr)
                     sys.exit(102)
                     
-            elif eq_class.class_name == "TEST/AND/OR":
-                pass
-                ########################### bytes.fromhex(hex_string[2:])
-                # eq_class.members[:] = [bitarray('0')
-                #                        if mem.strip()[-6:] == "r/m, r"
-                #                        else (bytes.fromhex(""), bitarray('1'))
-                #                        for mem in eq_class.members]
-            
-            elif eq_class.class_name == "SUB/XOR":
-                pass
-                ########################### bytes.fromhex(hex_string[2:])
-                # eq_class.members[:] = [bitarray('0')
-                #                        if mem.strip()[-6:] == "r/m, r"
-                #                        else (bytes.fromhex(""), bitarray('1'))
-                #                        for mem in eq_class.members]
-            
-            elif re.match(r"^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
-                          eq_class.class_name):
-                # 6, because 'r, r/m' string is 6 bytes long.
-                eq_class.members[:] = [bitarray('0')
-                                       if mem.strip()[-6:] == "r/m, r"
-                                       else bitarray('1')
-                                       for mem in eq_class.members]
-            
             elif re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) 32-bit$",
                           eq_class.class_name):
                 # Set Direction bit as bitarray with length equal to 1.
-                try:
-                    eq_class.members[:] = [bitarray(
-                                                f"{int(mem.strip()[-1]):b}")
-                                            for mem in eq_class.members]
-                except ValueError:
-                    print(f"ERROR! While parsing equivalent class members an error occured.",
+                for idx, mem in enumerate(eq_class.members):
+                    if re.match(
+                        r'^Direction Bit: [0-1]{1}$',
+                        mem.strip()):
+                        
+                        eq_class.members[idx] = \
+                            bitarray(f"{int(mem.strip()[-1]):b}")
+                    
+                    else:
+                        print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
                           file=sys.stderr)
-                    sys.exit(102)
+                        sys.exit(102)  
+                    
+            elif eq_class.class_name == "TEST/AND/OR":
+                
+                re_test = re.compile(r'^TEST r/m, r$')
+                re_dir0 = re.compile(r'^(?P<mnemo>AND|OR) r/m, r$')
+                re_dir1 = re.compile(r'^(?P<mnemo>AND|OR) r, r/m$')
+            
+                for idx, mem in enumerate(eq_class.members):
+                    
+                    dir0 = re_dir0.match(mem.strip())
+                    if dir0 is not None:
+                        # It is r/m, r form.
+                        mnemo = dir0.group("mnemo")
+                        if mnemo == "AND":
+                            # It is AND r/m, r.
+                            eq_class.members[idx] = "0x21"
+                        elif mnemo == "OR":
+                            # It is OR r/m, r.
+                            eq_class.members[idx] = "0x09"
+                    else:
+                        dir1 = re_dir1.match(mem.strip())
+                        if dir1 is not None:
+                            # It is r, r/m form.
+                            mnemo = dir1.group("mnemo")
+                            if mnemo == "AND":
+                                # It is AND r, r/m.
+                                eq_class.members[idx] = "0x23"
+                            elif mnemo == "OR":
+                                # It is OR r, r/m.
+                                eq_class.members[idx] = "0x0b"
+                        else:
+                            test = re_test.match(mem.strip())
+                            if test is not None:
+                                # It is TEST r/m, r.
+                                eq_class.members[idx] = "0x85"
+                            else:
+                                # Wrong class member inside config file.
+                                print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}", file=sys.stderr)
+                                sys.exit(102)
+            
+            elif eq_class.class_name == "SUB/XOR":
+
+                re_dir0 = re.compile(r'^(?P<mnemo>SUB|XOR) r/m, r$')
+                re_dir1 = re.compile(r'^(?P<mnemo>SUB|XOR) r, r/m$')
+            
+                for idx, mem in enumerate(eq_class.members):
+                    
+                    dir0 = re_dir0.match(mem.strip())
+                    if dir0 is not None:
+                        # It is r/m, r form.
+                        mnemo = dir0.group("mnemo")
+                        if mnemo == "XOR":
+                            # It is XOR r/m, r.
+                            eq_class.members[idx] = "0x31"
+                        elif mnemo == "SUB":
+                            # It is SUB r/m, r.
+                            eq_class.members[idx] = "0x29"
+                    else:
+                        dir1 = re_dir1.match(mem.strip())
+                        if dir1 is not None:
+                            # It is r, r/m form.
+                            mnemo = dir1.group("mnemo")
+                            if mnemo == "XOR":
+                                # It is XOR r, r/m.
+                                eq_class.members[idx] = "0x33"
+                            elif mnemo == "SUB":
+                                # It is SUB r, r/m.
+                                eq_class.members[idx] = "0x2b"
+                        else:
+                            # Wrong class member inside config file.
+                            print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}", file=sys.stderr)
+                            sys.exit(102)
+                        
+            
+            elif re.match(r"^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
+                          eq_class.class_name):
+                # Set Direction bit as bitarray with length equal to 1.
+                for idx, mem in enumerate(eq_class.members):
+                    if re.match(
+                        r'^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r/m, r$',
+                        mem.strip()):
+                        
+                        eq_class.members[idx] = bitarray('0')
+                    
+                    elif re.match(
+                        r'^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) r, r/m$',
+                        mem.strip()):
+                        
+                        eq_class.members[idx] = bitarray('1')
+                    
+                    else:
+                        print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
+                          file=sys.stderr)
+                        sys.exit(102)              
                     
             elif eq_class.class_name == "ADD negated":
-                pass
+                # ADD and SUB instructions have both same opcodes, but
+                # they differ in Reg/Opcode field inside ModR/M byte.
+                for idx, mem in enumerate(eq_class.members):
+                    
+                    if re.match(r'^ADD r/m, imm$', mem.strip()):
+                        # Reg/Opcode field of ADD.
+                        eq_class.members[idx] = bitarray('000')
+                        
+                    elif re.match(r'^SUB r/m, -imm$', mem.strip()):
+                        # Reg/Opcode field of SUB.
+                        eq_class.members[idx] = bitarray('101')
+                   
+                    else:
+                        # Wrong format of class member.
+                        print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
+                          file=sys.stderr)
+                        sys.exit(102)
             
             elif eq_class.class_name == "SUB negated":
-                pass
+                # ADD and SUB instructions have both same opcodes, but
+                # they differ in Reg/Opcode field inside ModR/M byte.
+                for idx, mem in enumerate(eq_class.members):
+                    
+                    if re.match(r'^SUB r/m, imm$', mem.strip()):
+                        # Reg/Opcode field of SUB.
+                        eq_class.members[idx] = bitarray('101')
+                    
+                    elif re.match(r'^ADD r/m, -imm$', mem.strip()):
+                        # Reg/Opcode field of ADD.
+                        eq_class.members[idx] = bitarray('000')
+                    
+                    else:
+                        # Wrong format of class member.
+                        print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
+                          file=sys.stderr)
+                        sys.exit(102)

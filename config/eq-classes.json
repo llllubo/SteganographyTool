@@ -1,8 +1,11 @@
 {
     "Scheduling": {
         "MOV Scheduling": {
-            "Description": "",
-            "Members": []
+            "Description": "Members array here determines what order encodes what bit (their position).",
+            "Members": [
+                "Ascending",
+                "Descending"
+            ]
         }
     },
 
@@ -43,8 +46,11 @@
             ]
         },
         "Swap base-index registers": {
-            "Description": "It's possible to swap base and index registers, if scale is set to 1 (registers in memory operand can be at least 32-bits long and must be of the same size). Members array is not needed here as encoding is determined lexicographically. E.g. MOV dword[eax + ebx*1], 0x5; MOV dword[ebx + eax*1], 0x5",
-            "Members": []
+            "Description": "It's possible to swap base and index registers, if scale is set to 1 (registers in memory operand can be at least 32-bits long and must be of the same size). Members array here determines what order encodes what bit (their position). E.g. MOV dword[eax + ebx*1], 0x5; MOV dword[ebx + eax*1], 0x5",
+            "Members": [
+                "Ascending",
+                "Descending"
+            ]
         },
         "SHL/SAL": {
             "Description": "SAL is always changed to SHL by disassemblers. They differ in Reg/Opcode field inside ModR/M byte. E.g. SHL/SAL eax, 0x2",
@@ -124,7 +130,7 @@
             ]
         },
         "SUB/XOR":{
-            "Description": "Must have both operands same (registers)! This has priority over the 'AND' and 'OR' classes. E.g. XOR/SUB eax, eax. Only Flag AF is modified by both instructions in different way, therefore it has to be checked. Form of the instruction (r/m, r or r, r/m) determines Direction bit inside instruction OPCODE (0 and 1, respectively).",
+            "Description": "Must have both operands same (registers)! This has priority over the 'SUB' and 'XOR' classes. E.g. XOR/SUB eax, eax. Only Flag AF is modified by both instructions in different way, therefore it has to be checked. Form of the instruction (r/m, r or r, r/m) determines Direction bit inside instruction OPCODE (0 and 1, respectively).",
             "Members": [
                 "XOR r/m, r",
                 "XOR r, r/m",

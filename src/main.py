@@ -54,17 +54,19 @@ class Main:
             inputf = args.stego_file
             
         
-        # hex_string = "0x82"
+        # hex_string = "0x0f1f009090909066909090"
         # mess = bytes.fromhex(hex_string[2:])
         # try:
-        #     fd = open("exace-testing/AcroRd32.exe", "r+b")
+        #     # fd = open("exace-testing/AcroRd32.exe", "r+b")
+        #     fd = open("aa", "r+b")
         # except IOError:
         #     print("ERROR! ", file=sys.stderr)
         # else:
         #     # fd.seek(offset)
-        #     fd.seek(0x19f4d4)
+        #     fd.seek(0x10a1)
         #     fd.write(mess)
         #     fd.close()
+        # return
         
         # Disassemble all instructions from executable.
         # Needed to keep all of them because of flags checking.
@@ -79,7 +81,7 @@ class Main:
         analyzer = Analyzer(bitness, 0, 0, 0.0, 0, 0)
         potential_my_instrs = \
             Selector.select(all_my_instrs, args.method, args.force, analyzer)
-
+            
         # for a, b in itertools.combinations(potential_my_instrs, 2):
         #     if id(a) == id(b):
         #         print(f"kurva..a.. {a.ioffset}, {a.eq_class}, {a.mov_scheduling_flag}")
@@ -88,35 +90,17 @@ class Main:
         # ###### KONTROLNY VYPIS
         # for my_instr in potential_my_instrs:
 
-        #     ##### ENCODING - vracia zlu dlzku dlhych NOPov s prefixami
-        #     encoder = Encoder(bitness)
-        #     try:
-        #         ############ NEPOUZIVAT TUTO DLZKU !!!!!!!!!!!!!!
-        #         encoder.encode(my_instr.instruction, my_instr.instruction.ip)
-        #     except ValueError:
-        #         buffer = ""
-        #         # print("ERROR encode")
-        #         # sys.exit(1000)
-        #     else:
-        #         buffer = encoder.take_buffer()
-        #         hexcode = " ".join(re.findall(r'(?:[0-9a-fA-F]{2}|[0-9a-fA-F])', buffer.hex()))
-
         #     got_op_code = my_instr.instruction.op_code()
 
-        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {got_op_code.op_code_string:<15} {my_instr.instruction.len:2} |  {hexcode:15}", end=" | ")
-        #     print(f"{my_instr.eq_class.class_name}")
-        #     print(f"{my_instr.instruction}")
+        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {my_instr.instruction.len:2}", end=" | ")
+        #     print(f"{my_instr.eq_class.class_name} | {my_instr.instruction}")
         #     print()
         #     if my_instr.instruction.encoding != EncodingKind.LEGACY:
-        #         print()
-        #         print()
         #         print()
         #         print()
         #         print("nieee")
         #         print()
         #         print()
-        #         print()
-        #         print()   569954   19f4d4    AND r/m8, imm8       80 /4 ib         3 |  80 e1 1f        | AND 32-bit
         # return
 
         ##### TESTOVANIE
