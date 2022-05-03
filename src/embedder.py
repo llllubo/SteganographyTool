@@ -9,7 +9,7 @@ from iced_x86 import *
 from bitarray import *
 from analyzer import Analyzer
 from eq_classes_processor import EqClassesProcessor
-import misc
+import common
 from my_instruction import MyInstruction
 
 
@@ -22,7 +22,7 @@ class Embedder:
         # a file extension.. alebo len string v bajtoch ak nebol zadany subor
         if os.path.isfile(secret_message):
             # The whole file is going to be embedded.
-            b_fext = misc.get_file_extension(secret_message)
+            b_fext = common.get_file_extension(secret_message)
             
             try:
                 fd = open(secret_message, "rb")
@@ -37,7 +37,7 @@ class Embedder:
             b_secret_data = secret_message.encode()
             # If no file was given, txt extension will be used (8 bytes).
             b_fext = b'txt'
-            b_fext += bytes(misc.SIZE_OF_FEXT - len(b_fext))
+            b_fext += bytes(common.SIZE_OF_FEXT - len(b_fext))
         
         return (b_secret_data, b_fext)
     
@@ -60,7 +60,7 @@ class Embedder:
     
     @classmethod
     def encrypt_data(cls, data: bytes) -> bytes:
-        b_key, cls.__b_passwd = misc.gen_key_from_passwd()
+        b_key, cls.__b_passwd = common.gen_key_from_passwd()
         cipher = Fernet(b_key)
         b_encrypted = cipher.encrypt(data)
         
@@ -71,16 +71,16 @@ class Embedder:
     def xor_data_len(cls, encrypted: bytes) -> bytes:
         # vracia 32B XORovanu dlzku spravy
         # Must be in bytes, because password is in the bytes as well.
-        b_encrypted_len = len(encrypted).to_bytes(misc.SIZE_OF_DATA_LEN, byteorder="little")
+        b_encrypted_len = len(encrypted).to_bytes(common.SIZE_OF_DATA_LEN, byteorder="little")
         
         print(f"[32B == {len(b_encrypted_len)} -- little] b_encrypted_len: {b_encrypted_len} -> {int.from_bytes(b_encrypted_len, byteorder='little')}")
         
         # Prepare password length ONLY for XOR operation.
-        if len(cls.__b_passwd) <= misc.SIZE_OF_DATA_LEN:
+        if len(cls.__b_passwd) <= common.SIZE_OF_DATA_LEN:
             b_passwd = cls.__b_passwd
-            b_passwd += bytes(misc.SIZE_OF_DATA_LEN - len(cls.__b_passwd))
+            b_passwd += bytes(common.SIZE_OF_DATA_LEN - len(cls.__b_passwd))
         else:
-            b_passwd = cls.__b_passwd[:misc.SIZE_OF_DATA_LEN]
+            b_passwd = cls.__b_passwd[:common.SIZE_OF_DATA_LEN]
 
         # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
         # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
@@ -91,13 +91,13 @@ class Embedder:
                 break
             null_padding += 1
         
-        i = misc.SIZE_OF_DATA_LEN - null_padding
+        i = common.SIZE_OF_DATA_LEN - null_padding
         
         b_xored_len = bytes([a ^ b for a, b in zip(b_encrypted_len, b_passwd[:i])])
         print(f"...{b_xored_len}")
         
         # Add null bytes after XOR.
-        b_xored_len += bytes(misc.SIZE_OF_DATA_LEN - len(b_xored_len))
+        b_xored_len += bytes(common.SIZE_OF_DATA_LEN - len(b_xored_len))
         
         print(f"[32B == {len(b_xored_len):,} -- little] b_xored_len: {b_xored_len}")
         
@@ -109,13 +109,13 @@ class Embedder:
         # vraciam vyXORovany fext ktory ma 8 bajtov.     
 
         # xoruje sa len ak je nejaka extension, inak by sa heslo vyxorovalo do extension (xoroval by som heslo s nulami == heslo).
-        if fext != bytes(misc.SIZE_OF_FEXT):
+        if fext != bytes(common.SIZE_OF_FEXT):
             # Prepare password length ONLY for XOR operation.
-            if len(cls.__b_passwd) <= misc.SIZE_OF_FEXT:
+            if len(cls.__b_passwd) <= common.SIZE_OF_FEXT:
                 b_passwd = cls.__b_passwd
-                b_passwd += bytes(misc.SIZE_OF_FEXT - len(cls.__b_passwd))
+                b_passwd += bytes(common.SIZE_OF_FEXT - len(cls.__b_passwd))
             else:
-                b_passwd = cls.__b_passwd[:misc.SIZE_OF_FEXT]
+                b_passwd = cls.__b_passwd[:common.SIZE_OF_FEXT]
             
             # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
             # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
@@ -127,13 +127,13 @@ class Embedder:
                     break
                 null_padding += 1
             
-            i = misc.SIZE_OF_FEXT - null_padding
+            i = common.SIZE_OF_FEXT - null_padding
             
             b_xored_fext = bytes([a ^ b for a, b in zip(fext, b_passwd[:i])])
             print(f"...{b_xored_fext}")
             
             # Add null bytes after XOR.
-            b_xored_fext += bytes(misc.SIZE_OF_FEXT - len(b_xored_fext))
+            b_xored_fext += bytes(common.SIZE_OF_FEXT - len(b_xored_fext))
             
             print(f"[8B == {len(b_xored_fext):,} -- little] b_xored_fext: {b_xored_fext}")
             
@@ -219,14 +219,6 @@ class Embedder:
         ####################################### PREC
         print("TOTO POJDE PREC -- KONTROLA NECHCENEJ CHYBY")
         sys.exit(101)
-
-
-    @staticmethod
-    def __get_opcode_idx(instr: bytes, opcode: str) -> int:
-        # Return index of opcode within instruction bytes.
-        for idx, b in enumerate(instr):
-            if b == opcode:
-                return idx
             
             
     @staticmethod
@@ -262,21 +254,6 @@ class Embedder:
             # There is no REX prefix.
             return -1
         
-        
-    @staticmethod
-    def __lexicographic_mov_sort(mov_string: str):
-        # Lexicographic sorter is designed for MOV scheduling. It has 1
-        # imperfection and that is unability to sort two different but
-        # lexicographiclly same instrucion strings.
-        # E.g. MOV [rax], rbx; MOV [rbx], rax.
-        # Example above is allowed by selector, but this function
-        # determines they are same. This scheduling will be skipped if
-        # occurs.
-        # Also, this imprefection has influence on embedding capacity.
-        # As practically was tested, this case is extremely rare,
-        # therefore average capacity is not changed and remains set to 1.
-        return sorted(sorted(mov_string), key=str.upper)
-        
     
     @classmethod
     def __should_swap_mov(cls,
@@ -289,8 +266,8 @@ class Embedder:
         
         mov0 = f"{instr_mov0.instruction}"
         mov1 = f"{instr_mov1.instruction}"
-        if cls.__lexicographic_mov_sort(mov0) == \
-            cls.__lexicographic_mov_sort(mov1):
+        if common.lexicographic_mov_sort(mov0) == \
+            common.lexicographic_mov_sort(mov1):
             # Setting first MOV to None is signing tak they can not be
             # scheduled. It happens extremely rare.
             print(".................SAME")
@@ -307,11 +284,11 @@ class Embedder:
                 ordering = eq_class.members[idx]
         
         if ordering == "Ascending" and \
-            cls.__lexicographic_mov_sort(mov0) > cls.__lexicographic_mov_sort(mov1):
+            common.lexicographic_mov_sort(mov0) > common.lexicographic_mov_sort(mov1):
             return True
         
         elif ordering == "Descending" and \
-            cls.__lexicographic_mov_sort(mov0) < cls.__lexicographic_mov_sort(mov1):
+            common.lexicographic_mov_sort(mov0) < common.lexicographic_mov_sort(mov1):
             return True
         
         return False
@@ -404,10 +381,10 @@ class Embedder:
     
     @staticmethod
     def __create_opcode(instr: MyInstruction, idx: int) -> bytes:
-        # Creates desired OPCODE for instructions of equivalent classes
+        # Create desired OPCODE for instructions of equivalent classes
         # 'TEST/AND/OR' and 'SUB/XOR'.
         if OpCodeInfo(instr.instruction.code).operand_size == 0:
-            # Correctness of OPCODE if 8 bytes operand.
+            # Correctness of OPCODE if 1 byte operand.
             new_opcode = int(instr.eq_class.members[idx][2:], 16)
             new_opcode -= 1
             b_new_opcode = \
@@ -506,45 +483,6 @@ class Embedder:
         print(f"b_imm: {b_imm.hex()}")
         return instr_fromf.find(b_imm)
 
-
-    @staticmethod
-    def __set_skip_flag(instr: MyInstruction,
-                        next_instr: MyInstruction) -> tuple:
-        # This function is always performed only for first instruction
-        # of NOPs sequence. There is one special situation, when for
-        # 3 Bytes Long NOP equivalent class, it's not possible to
-        # determine if 1 or 2 next instructions should be skipped
-        # (because of 0x909090 sequence). In this situation is skip flag
-        # set to 1 as it's absolutely sure that at least 1 instruction
-        # must be skipped. Together with it, there is returned nop909090
-        # occurence flag.
-
-        if instr.eq_class.class_name == "2 Bytes Long NOP":
-            if len(instr.instruction) == 2:
-                skip = 0
-            elif len(instr.instruction) == 1:
-                skip = 1
-        elif instr.eq_class.class_name == "3 Bytes Long NOP":
-            if len(instr.instruction) == 3:
-                skip = 0
-            elif len(instr.instruction) == 2:
-                    skip = 1
-            elif len(instr.instruction) == 1:
-                # Number of NOPs that are going to be skipped is
-                # significantly influenced by next instruction. If next
-                # is again NOP 0x90, 2 skips must be done, otherwise 1.
-                if len(next_instr.instruction) == 1:
-                    # Sequence of three 1 byte long NOPs (0x909090).
-                    skip = 2
-                else:
-                    # Sequence of 1 byte 0x90 and any 2 bytes long NOP.
-                    skip = 1
-        else:
-            print(f"HUHHH?")
-            sys.exit(10000)
-            
-        return skip
-
     
     @classmethod
     def embed(cls,
@@ -576,14 +514,12 @@ class Embedder:
             print(f"ERROR! Can not open cover file for embedding: {fexe}",
                   file=sys.stderr)
             sys.exit(101)
-            
-        tmpppppppppp = 0
         
         for instr_idx, my_instr in enumerate(potential_my_instrs):
             # print()
             
             if skip:
-                # Skip current instruction.
+                # Skip current NOP instruction.
                 skip -= 1
                 # print("SKIPPING")
                 continue
@@ -634,8 +570,8 @@ class Embedder:
                     # Get and find an opcode of instruction.
                     instr_opcode = OpCodeInfo(instr.code).op_code
                     # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
-                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                                                      instr_opcode)
+                    opcode_idx = common.get_opcode_idx(b_instr_fromf,
+                                                       instr_opcode)
 
                     # Find Direction bit to embed according to the
                     # encoding.
@@ -708,8 +644,8 @@ class Embedder:
                         # Get and find an opcode of instruction.
                         instr_opcode = OpCodeInfo(instr.code).op_code
                         # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
-                        opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                                                        instr_opcode)
+                        opcode_idx = common.get_opcode_idx(b_instr_fromf,
+                                                           instr_opcode)
                         
                         rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
                         # print(f"REX: {rex_idx}")
@@ -755,8 +691,8 @@ class Embedder:
                     
                     # mov0 = f"{my_instr.instruction}"
                     # mov1 = f"{potential_my_instrs[instr_idx + 1].instruction}"
-                    # if cls.__lexicographic_mov_sort(mov0) == \
-                    #     cls.__lexicographic_mov_sort(mov1) and \
+                    # if common.lexicographic_mov_sort(mov0) == \
+                    #     common.lexicographic_mov_sort(mov1) and \
                     #         skip_mov:
                     #     print(".................SAME")
                     
@@ -811,8 +747,8 @@ class Embedder:
                     eq_class.class_name == "3 Bytes Long NOP":
                         
                     # Set skip flag for next instructions skipping.
-                    skip = cls.__set_skip_flag(my_instr,
-                                               potential_my_instrs[instr_idx + 1])
+                    skip = common.set_skip_flag(my_instr,
+                                                potential_my_instrs[instr_idx + 1])
 
                     # Find bits to embed according to the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
@@ -830,7 +766,7 @@ class Embedder:
                 elif eq_class.class_name == ">3 Bytes Long NOP":
 
                     # Get number of bits available for embedding.
-                    bits_cnt = misc.count_useable_bytes_from_nop(instr, bitness)
+                    bits_cnt = common.count_useable_bits_from_nop(instr, bitness)
                     # Take bits needed to embed.
                     bits_to_embed = bits_mess[:bits_cnt]
 
@@ -861,8 +797,8 @@ class Embedder:
                     
                     # Get and find an opcode of instruction.
                     instr_opcode = OpCodeInfo(instr.code).op_code
-                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                                                      instr_opcode)
+                    opcode_idx = common.get_opcode_idx(b_instr_fromf,
+                                                       instr_opcode)
                     
                     # Find bits to embed according to the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
@@ -895,8 +831,8 @@ class Embedder:
                     
                     # Get and find an opcode of instruction.
                     instr_opcode = OpCodeInfo(instr.code).op_code
-                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                                                      instr_opcode)
+                    opcode_idx = common.get_opcode_idx(b_instr_fromf,
+                                                       instr_opcode)
 
                     # Find Direction bit to embed according to the
                     # encoding.
@@ -933,8 +869,8 @@ class Embedder:
                     
                     # Get and find an opcode of instruction.
                     instr_opcode = OpCodeInfo(instr.code).op_code
-                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                                                      instr_opcode)
+                    opcode_idx = common.get_opcode_idx(b_instr_fromf,
+                                                       instr_opcode)
                     
                     # Find Reg/Opcode bits to embed according to the
                     # encoding.
@@ -956,7 +892,7 @@ class Embedder:
                     # print(f"{fd.read(len(instr)).hex()}")
                     # sys.exit()
                 
-                if eq_class.class_name == "ADD negated" or \
+                elif eq_class.class_name == "ADD negated" or \
                     eq_class.class_name == "SUB negated":
                     continue
                     print()
@@ -975,8 +911,8 @@ class Embedder:
                     
                     # Get and find an opcode of instruction.
                     instr_opcode = OpCodeInfo(instr.code).op_code
-                    opcode_idx = cls.__get_opcode_idx(b_instr_fromf,
-                                                      instr_opcode)
+                    opcode_idx = common.get_opcode_idx(b_instr_fromf,
+                                                       instr_opcode)
                     
                     # Find Reg/Opcode bits to embed according to the
                     # encoding.

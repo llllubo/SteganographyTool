@@ -3,7 +3,7 @@ import re
 from iced_x86 import *
 from my_instruction import MyInstruction
 from analyzer import Analyzer
-from misc import count_useable_bytes_from_nop
+from common import count_useable_bits_from_nop
 from eq_classes_processor import EqClassesProcessor
 
 
@@ -535,11 +535,15 @@ class Selector:
                         cls.__set_eq_class(my_instr, ">3 Bytes Long NOP")
                         selected_my_instrs.append(my_instr)
                         
+                        print()
+                        print(f"{instr}, {my_instr.foffset:x}, {my_instr.eq_class.class_name}, {my_instr.ioffset}")
+                        
                         # Compute capacities.
-                        cap = count_useable_bytes_from_nop(
-                            instr,
-                            analyzer.bitness
-                            )
+                        # cap = count_useable_bits_from_nop(
+                        #     instr,
+                        #     analyzer.bitness
+                        #     )
+                        print(f"{cap}")
                         avg_cap += float(cap)
                         min_cap += cap
                         max_cap += cap

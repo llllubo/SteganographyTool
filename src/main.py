@@ -21,7 +21,7 @@ from extractor import Extractor
 from analyzer import Analyzer
 from selector import Selector
 from eq_classes_processor import EqClassesProcessor
-from misc import *
+from common import *
 
 
 __author__ = "Ľuboš Bever"
@@ -117,6 +117,7 @@ class Main:
             # Parse equivalent class members if needed (this is not
             # applied for example on NOP classes).
             EqClassesProcessor.parse_members()
+        #     print(EqClassesProcessor.all_eq_classes)
         # return
         ######### POZOR NA ENDIANNESS, NEVIEM CI SOM DOBRE TVORIL BYTES..
         
@@ -129,23 +130,26 @@ class Main:
             print(f"len(b_secret_data): {len(b_secret_data):,}")
             print(f"b_fext: {len(b_fext):,} -> {b_fext}")
             
-            # Lossless compression of secret data.
-            b_comp = Embedder.compress(b_secret_data)
-            print(f"len(b_comp): {len(b_comp):,}")
+            # # Lossless compression of secret data.
+            # b_comp = Embedder.compress(b_secret_data)
+            # print(f"len(b_comp): {len(b_comp):,}")
             
-            # Encrypt compressed secret data.
-            b_encrypted = Embedder.encrypt_data(b_comp)
-            # Compute length of encrypted data and XOR the length with
-            # password. The length is 32 bytes long and do not count
-            # with itself neither with 8 bytes long file extension
-            # (it's only raw data).
-            b_xored_len = Embedder.xor_data_len(b_encrypted)
-            # XOR file extension with password. The extension is always
-            # 8 bytes long.
-            b_xored_fext = Embedder.xor_fext(b_fext)
+            # # Encrypt compressed secret data.
+            # b_encrypted = Embedder.encrypt_data(b_comp)
+            # # Compute length of encrypted data and XOR the length with
+            # # password. The length is 32 bytes long and do not count
+            # # with itself neither with 8 bytes long file extension
+            # # (it's only raw data).
+            # b_xored_len = Embedder.xor_data_len(b_encrypted)
+            # # XOR file extension with password. The extension is always
+            # # 8 bytes long.
+            # b_xored_fext = Embedder.xor_fext(b_fext)
             
-            # Get all parts of data into the one.
-            b_message = b_xored_len + b_xored_fext + b_encrypted
+            # # Get all parts of data into the one.
+            # b_message = b_xored_len + b_xored_fext + b_encrypted
+            
+            b_message = len(b_secret_data).to_bytes(SIZE_OF_DATA_LEN, byteorder="little") + b_fext + b_secret_data
+            # print(f"{b_message}")
             
             print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
             print(f"MAX CAPACITY: {analyzer.max_capacity / 8} bytes")
@@ -164,48 +168,75 @@ class Main:
             
             print("---------------------------------------------------")
             
-            ############extrakcia
-            bits_extracted = bitarray()
+            # ############extrakcia
             
-            # extract xorovanu dlzku dat -- 32B
-            Extractor.extract(inputf, SIZE_OF_DATA_LEN, bits_extracted)
+            # # extract xorovanu dlzku dat -- 32B
             
-            # UnXOR extracted length of data with password.
-            data_len = Extractor.unxor_data_len(b_xored_len)
-            print(f"extracted (encrypted) data len: {data_len:,}")
+            # # UnXOR extracted length of data with password.
+            # data_len = Extractor.unxor_data_len(b_xored_len)
+            # print(f"extracted (encrypted) data len: {data_len:,}")
             
-            # extract fext -- 8B
+            # # extract fext -- 8B
             
-            # UnXOR extracted file extension with password.
-            b_unxored_fext = Extractor.unxor_fext(b_xored_fext)
+            # # UnXOR extracted file extension with password.
+            # b_unxored_fext = Extractor.unxor_fext(b_xored_fext)
             
-            # extract zvysne data -- pouzitie metody
+            # # extract zvysne data -- pouzitie metody
             
-            # Decrypt extracted data.
-            b_decrypted = Extractor.decrypt_data(b_encrypted)
+            # # Decrypt extracted data.
+            # b_decrypted = Extractor.decrypt_data(b_encrypted)
             
-            # Decompress decrypted data and get secret message.
-            b_decomp = Extractor.decompress(b_decrypted)
+            # # Decompress decrypted data and get secret message.
+            # b_decomp = Extractor.decompress(b_decrypted)
             
-            ##### len kontrola
-            if b_secret_data == b_decomp:
-                print("OK kompresia")
-            else:
-                print("NEOK kompresia")
-            ##### len kontrola
-            if b_fext == b_unxored_fext:
-                print("OK fext")
-            else:
-                print("NEOK fext")
+            # ##### len kontrola
+            # if b_secret_data == b_decomp:
+            #     print("OK kompresia")
+            # else:
+            #     print("NEOK kompresia")
+            # ##### len kontrola
+            # if b_fext == b_unxored_fext:
+            #     print("OK fext")
+            # else:
+            #     print("NEOK fext")
             
-            Extractor.make_output(b_decomp, b_unxored_fext)
+            # Extractor.make_output(b_decomp, b_unxored_fext)
             
         elif args.mode == "x" or args.mode == "extract":
             
             ##### extrakcia
             # prechod skrz list referencii na instrukcie na extrakciu
             # mam dlzku a podla nej iterujem a extrahujem
-            pass
+            
+            # Extract all data.
+            bits_extracted = Extractor.extract(inputf,
+                                               potential_my_instrs,
+                                               bitness)
+            
+            print(f"main - extracted_len: {len(bits_extracted) / 8}")
+            print(f"{bits_extracted.tobytes()}")
+            b_fext = bits_extracted[:SIZE_OF_FEXT * 8].tobytes()
+            print(f"{b_fext}")
+            b_data = bits_extracted[SIZE_OF_FEXT * 8:].tobytes()
+            Extractor.make_output(b_data, b_fext)
+            
+            # # Locate and prepare file extension bits.
+            # b_xored_fext = bits_extracted[:SIZE_OF_FEXT * 8].tobytes()
+            # # File extension bits can be deleted to get pure data bits.
+            # del bits_extracted[:SIZE_OF_FEXT * 8]
+            # print(f"{b_xored_fext}")
+            # # UnXOR extracted file extension with password.
+            # b_unxored_fext = Extractor.unxor_fext(b_xored_fext)
+            # print(f"{b_unxored_fext}")
+            
+            # # Decrypt extracted data.
+            # b_encrypted = bits_extracted.tobytes()
+            # b_decrypted = Extractor.decrypt_data(b_encrypted)
+            # print(f"{b_decrypted}")
+            # # Decompress decrypted data and get secret message.
+            # b_decomp = Extractor.decompress(b_decrypted)
+            # print(f"{b_decomp}")
+            # Extractor.make_output(b_decomp, b_unxored_fext)
         
         elif args.mode == "r" or args.mode == "reset":
             
