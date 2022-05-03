@@ -535,15 +535,11 @@ class Selector:
                         cls.__set_eq_class(my_instr, ">3 Bytes Long NOP")
                         selected_my_instrs.append(my_instr)
                         
-                        print()
-                        print(f"{instr}, {my_instr.foffset:x}, {my_instr.eq_class.class_name}, {my_instr.ioffset}")
-                        
                         # Compute capacities.
-                        # cap = count_useable_bits_from_nop(
-                        #     instr,
-                        #     analyzer.bitness
-                        #     )
-                        print(f"{cap}")
+                        cap = count_useable_bits_from_nop(
+                            instr,
+                            analyzer.bitness
+                            )
                         avg_cap += float(cap)
                         min_cap += cap
                         max_cap += cap

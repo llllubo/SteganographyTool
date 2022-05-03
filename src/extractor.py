@@ -86,7 +86,7 @@ class Extractor:
         for idx, mem in enumerate(eq_class.members):
             if extracted_mem == mem:
                 return eq_class.encoded_idxs[idx]
-    
+        print(f"POZOOOOOOOOOOOR")
     
     @classmethod
     def extract(cls,
@@ -262,21 +262,26 @@ class Extractor:
                     # Read instruction bytes from file to be able to
                     # analyze it.
                     fd.seek(my_instr.foffset)
-                    b_instr_fromf = fd.read(len(instr))
+                    if eq_class.class_name == "2 Bytes Long NOP":
+                        b_instr_fromf = fd.read(2)
+                    elif eq_class.class_name == "3 Bytes Long NOP":
+                        b_instr_fromf = fd.read(3)
                     
                     # Convert bytes to hex string.
                     hex_instr = "0x" + b_instr_fromf.hex()
-
+                    print()
+                    print(f"{hex_instr}, {my_instr.instruction}")
                     # Decode read instruction.
                     extracted_bits = cls.__decode(eq_class, hex_instr)
-                    
+                    print(f"{extracted_bits}")
                     # Collect decoded bits and create message.
-                    bits_mess.extend(bits_extracted)
+                    bits_mess.extend(extracted_bits)
 
                 # Class does not encodes class members, as it does not
                 # have any. In this case, bits from message are simply
                 # embedded to the last useable instruction bytes.
                 elif eq_class.class_name == ">3 Bytes Long NOP":
+                    
                     # Get number of last instruction bits which contain
                     # message bits.
                     bits_cnt = common.count_useable_bits_from_nop(instr, bitness)
@@ -289,45 +294,12 @@ class Extractor:
                     b_extracted = fd.read(b_cnt)
                     
                     # Convert extracted bytes to bits.
-                    bits_extracted = bitarray(endian="little")
-                    bits_extracted.frombytes(b_extracted)
+                    extracted_bits = bitarray(endian="little")
+                    extracted_bits.frombytes(b_extracted)
                     
                     # Collect decoded bits and create message.
-                    bits_mess.extend(bits_extracted)
+                    bits_mess.extend(extracted_bits)
                     # sys.exit()
-
-
-                    ############# MOJ NOVY POKUS
-                    # # Read instruction bytes from file to be able to
-                    # # analyze it.
-                    # fd.seek(my_instr.foffset)
-                    # b_instr_fromf = fd.read(len(instr))
-                    
-                    # # Get and find an opcode of instruction.
-                    # instr_opcode = OpCodeInfo(instr.code).op_code
-                    # opcode_idx = common.get_opcode_idx(b_instr_fromf,
-                    #                                    instr_opcode)
-
-                    # # Get number of last instruction bits which contain
-                    # # message bits.
-                    # bits_cnt = common.count_useable_bits_from_nop(b_instr_fromf, opcode_idx)
-                    # # There is 100% chance that it will be multiple of 8.
-                    # b_cnt = bits_cnt // 8
-                    
-                    # print(f".........{b_instr_fromf}, {opcode_idx}, {b_cnt}")
-                    
-                    # # Extract from executable.
-                    # pos = my_instr.foffset + (len(instr) - b_cnt)
-                    # fd.seek(pos)
-                    # b_extracted = fd.read(b_cnt)
-                    
-                    # # Convert extracted bytes to bits.
-                    # bits_extracted = bitarray(endian="little")
-                    # bits_extracted.frombytes(b_extracted)
-                    
-                    # # Collect decoded bits and create message.
-                    # bits_mess.extend(bits_extracted)
-                    # # sys.exit()
                 
                 # These two classes can be merged as they modify only
                 # Reg/Opcode field inside ModR/M byte.

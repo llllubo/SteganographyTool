@@ -89,12 +89,15 @@ class Main:
         #         print(f"kurva..b.. {b.ioffset}, {b.eq_class}, {b.mov_scheduling_flag}")
     
         # ###### KONTROLNY VYPIS
+        # tmp = 0
         # for my_instr in potential_my_instrs:
 
         #     got_op_code = my_instr.instruction.op_code()
-
-        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {my_instr.instruction.len:2}", end=" | ")
-        #     print(f"{my_instr.eq_class.class_name} | {my_instr.instruction}")
+        #     tmp += len(my_instr.instruction)
+        #     # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {my_instr.instruction.len:2}", end=" | ")
+        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {my_instr.instruction.len:2}", end=" | ")
+        #     # print(f"{my_instr.eq_class.class_name} | {my_instr.instruction}")
+        #     print(f"{my_instr.eq_class.class_name}")
         #     print()
         #     if my_instr.instruction.encoding != EncodingKind.LEGACY:
         #         print()
@@ -102,6 +105,7 @@ class Main:
         #         print("nieee")
         #         print()
         #         print()
+        # print(f"len: {tmp}")
         # return
 
         ##### TESTOVANIE

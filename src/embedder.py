@@ -779,7 +779,7 @@ class Embedder:
                     fd.write(bits_to_embed)
                     
                     # Delete already embedded bits from list.
-                    del bits_mess[:bits_cnt]
+                    del bits_mess[:len(bits_to_embed)]
                 
                 # These two classes can be merged as they modify only
                 # Reg/Opcode field inside ModR/M byte.
