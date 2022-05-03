@@ -361,10 +361,10 @@ class Embedder:
             # There was REX prefix detected.
             rex_b_bit_offset = rex_idx * 8 + 7
             rex_b_bit = bits_instr[rex_b_bit_offset]
-            rex_x_bit_offset = rex_idx * 8 + 6
-            rex_x_bit = bits_instr[rex_x_bit_offset]
-            bits_instr[rex_b_bit_offset] = rex_x_bit
-            bits_instr[rex_x_bit_offset] = rex_b_bit
+            rex_r_bit_offset = rex_idx * 8 + 5
+            rex_r_bit = bits_instr[rex_r_bit_offset]
+            bits_instr[rex_b_bit_offset] = rex_r_bit
+            bits_instr[rex_r_bit_offset] = rex_b_bit
         
         # Locate Reg/Opcode field inside ModR/M byte.
         reg_field_offset = (opcode_idx + 1) * 8 + 2
@@ -555,7 +555,7 @@ class Embedder:
                     # exchanged, as well.
                     # MOV instruction form this class can also be
                     # scheduled.
-
+                    
                     # Read instruction bytes from file to be able to
                     # modify it.
                     fd.seek(my_instr.foffset)
@@ -572,21 +572,23 @@ class Embedder:
                     # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
                     opcode_idx = common.get_opcode_idx(b_instr_fromf,
                                                        instr_opcode)
-
+                    # print()
+                    # print(f"{b_instr_fromf.hex()}, {instr_opcode:x}, {opcode_idx}")
                     # Find Direction bit to embed according to the
                     # encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
                     new_dir_bit = eq_class.members[idx]
-                    
+                    # print(f"{new_dir_bit}")
                     # print(f"{new_dir_bit}, {opcode_idx}, {instr_opcode:x}, {idx}")
                     
                     dir_bit_offset = (opcode_idx * 8) + 6
+                    # decide if Direction bit is going to be swapped.
                     if bits_instr[dir_bit_offset:dir_bit_offset + 1] != \
                         new_dir_bit:
                     
                         # Direction bit is going to be changed.
                         rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
-
+                        # print(f"rex: {rex_idx}")
                         # Exchange Reg/Opcode and rm field of ModR/M byte.
                         cls.__swap_rm_r_operands(rex_idx,
                                                 opcode_idx,
@@ -595,7 +597,7 @@ class Embedder:
                         # Rewrite Direction bit inside opcode of instruction.
                         bits_instr[dir_bit_offset:dir_bit_offset + 1] = \
                             new_dir_bit
-                        
+                        # print(f"{bits_instr}")
                         # Embed to the executable.
                         fd.seek(my_instr.foffset)
                         fd.write(bits_instr)
@@ -604,8 +606,10 @@ class Embedder:
                     del bits_mess[:len(eq_class.encoded_idxs[idx])]
                     
                     # fd.seek(my_instr.foffset)
-                    # print(f"{fd.read(len(instr)).hex()}")
-                    # sys.exit()
+                    # print(f"{my_instr.instruction}, {fd.read(len(instr)).hex()}, {my_instr.foffset:x}")
+                    # # sys.exit()
+                    # # if my_instr.foffset == 0x23e1b:
+                    # #     sys.exit()
                 
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
@@ -617,7 +621,7 @@ class Embedder:
                     # exchanged, as well.
                     # MOV instruction form this class can also be
                     # scheduled.
-                    
+                    continue
                     # Find out desired order for base-index according to
                     # the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
@@ -785,7 +789,7 @@ class Embedder:
                 # Reg/Opcode field inside ModR/M byte.
                 elif eq_class.class_name == "SHL/SAL" or \
                     eq_class.class_name == "TEST non-accumulator register":
-                    
+
                     # Read instruction bytes from file to be able to
                     # modify it.
                     fd.seek(my_instr.foffset)

@@ -95,7 +95,7 @@ class Main:
         #     got_op_code = my_instr.instruction.op_code()
         #     tmp += len(my_instr.instruction)
         #     # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {my_instr.instruction.len:2}", end=" | ")
-        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {my_instr.instruction.len:2}", end=" | ")
+        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {my_instr.instruction.len:2}   {got_op_code.instruction_string:<16}", end=" | ")
         #     # print(f"{my_instr.eq_class.class_name} | {my_instr.instruction}")
         #     print(f"{my_instr.eq_class.class_name}")
         #     print()
@@ -153,7 +153,7 @@ class Main:
             # b_message = b_xored_len + b_xored_fext + b_encrypted
             
             b_message = len(b_secret_data).to_bytes(SIZE_OF_DATA_LEN, byteorder="little") + b_fext + b_secret_data
-            # print(f"{b_message}")
+            print(f"{b_message}")
             
             print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
             print(f"MAX CAPACITY: {analyzer.max_capacity / 8} bytes")

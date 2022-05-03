@@ -86,7 +86,7 @@ class Extractor:
         for idx, mem in enumerate(eq_class.members):
             if extracted_mem == mem:
                 return eq_class.encoded_idxs[idx]
-        print(f"POZOOOOOOOOOOOR")
+        print(f"POZOOOOOOOOOOOR")###########################
     
     @classmethod
     def extract(cls,
@@ -155,7 +155,7 @@ class Extractor:
                           eq_class.class_name):
                     # Secret bit is stored at the place of Direction bit
                     # inside OPCODE.
-
+                    
                     # Read instruction bytes from file to be able to
                     # analyze it.
                     fd.seek(my_instr.foffset)
@@ -164,12 +164,14 @@ class Extractor:
                     # Convert read instruction from bytes to bits.
                     bits_instr = bitarray()
                     bits_instr.frombytes(b_instr_fromf)
-
+                    
                     # Get and find an opcode of instruction.
                     instr_opcode = OpCodeInfo(instr.code).op_code
                     opcode_idx = common.get_opcode_idx(b_instr_fromf,
                                                        instr_opcode)
-                    
+                    # print()
+                    # print(f"{b_instr_fromf.hex()}, {instr_opcode:x}, {opcode_idx}")
+                    # print(f"{bits_instr}")
                     dir_bit_offset = (opcode_idx * 8) + 6
                     # Decode read Direction bit.
                     extracted_bits = cls.__decode(eq_class,
@@ -177,6 +179,11 @@ class Extractor:
                     
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
+                    
+                    # fd.seek(my_instr.foffset)
+                    # print(f"{fd.read(len(instr)).hex()}")
+                    # if f"{my_instr.foffset:x}" == f"{0x23e1b:x}":
+                    #     sys.exit()
                 
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
@@ -188,7 +195,7 @@ class Extractor:
                     # exchanged, as well.
                     # MOV instruction form this class can also be
                     # scheduled.
-
+                    continue
                     # Get type of order in which are memory registers
                     # present.
                     order = cls.__get_order_type(my_instr, None)
