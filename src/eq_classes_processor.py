@@ -184,7 +184,7 @@ class EqClassesProcessor:
         for eq_class in cls.all_eq_classes:
             
             if eq_class.class_name == "MOV Scheduling" or \
-                eq_class.class_name == "Swap base-index registers":
+                eq_class.class_name == "Swap base-index registers 32-bit":
                 
                 for mem in eq_class.members:
                     if not re.match(r'^(?:Ascending|Descending)$',mem.strip()):

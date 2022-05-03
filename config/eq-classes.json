@@ -45,8 +45,8 @@
                 "TEST /1"
             ]
         },
-        "Swap base-index registers": {
-            "Description": "It's possible to swap base and index registers, if scale is set to 1 (registers in memory operand can be at least 32-bits long and must be of the same size). Members array here determines what order encodes what bit (their position). E.g. MOV dword[eax + ebx*1], 0x5; MOV dword[ebx + eax*1], 0x5",
+        "Swap base-index registers 32-bit": {
+            "Description": "It's possible to swap base and index registers, if scale is set to 1 (registers in memory operand can be at least 32-bits long and must be of the same size). But, usage of base-index registers are restricted when EBP/ESP registers are used. Therefore instructions with these registers can not be used within equivalent class. Also, swapping registers can produce different results as default segment which is used only depends on instruction. This can be ignored if 32-bit instructions are used. Members array here determines what order encodes what bit (their position). E.g. MOV dword[eax + ebx*1], 0x5; MOV dword[ebx + eax*1], 0x5",
             "Members": [
                 "Ascending",
                 "Descending"

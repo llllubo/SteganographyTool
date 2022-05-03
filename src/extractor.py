@@ -36,7 +36,7 @@ class Extractor:
     @staticmethod
     def __get_order_type(instr: MyInstruction, prev_mov: MyInstruction) -> str:
         # Determine occuring order. It's designed for classes
-        # 'MOV Scheduling' and 'Swap base-index registers' as only these
+        # 'MOV Scheduling' and 'Swap base-index registers 32-bit' as only these
         # use scheduling.
         # Only in case of class 'MOV Scheduling' is 2nd parameter given,
         # otherwise it's set to None. This parameter is 1st occured MOV.
@@ -54,7 +54,7 @@ class Extractor:
                 else:
                     return "Descending"
             
-        elif instr.eq_class.class_name == "Swap base-index registers":
+        elif instr.eq_class.class_name == "Swap base-index registers 32-bit":
             if instr.instruction.memory_base < instr.instruction.memory_index:
                 return "Ascending"
             else:
@@ -188,7 +188,7 @@ class Extractor:
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
                 # registers name.
-                if eq_class.class_name == "Swap base-index registers":
+                if eq_class.class_name == "Swap base-index registers 32-bit":
                     # Instruction form changes (SIB.base <=> SIB.index),
                     # therefore, also, operands must be changed. If REX
                     # prefix is present, proper bits of prefix are

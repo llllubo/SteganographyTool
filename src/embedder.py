@@ -614,7 +614,7 @@ class Embedder:
                 # Class does not encodes class members, as it does not
                 # have any. Encoding is lexicographic order of used
                 # registers name.
-                if eq_class.class_name == "Swap base-index registers":
+                if eq_class.class_name == "Swap base-index registers 32-bit":
                     # Instruction form changes (SIB.base <=> SIB.index),
                     # therefore, also, operands must be changed. If REX
                     # prefix is present, proper bits of prefix are

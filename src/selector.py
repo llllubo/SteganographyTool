@@ -355,7 +355,7 @@ class Selector:
                                 (
                                     prev_mov.eq_class.class_name == "MOV" or \
                                     prev_mov.eq_class.class_name == \
-                                        "Swap base-index registers"
+                                        "Swap base-index registers 32-bit"
                                 ):
                                 # Previous MOV has already got eq_class
                                 # and also was selected.
@@ -665,12 +665,12 @@ class Selector:
                         my_instr.eq_class.class_name == "MOV Scheduling":
                         # MOV has already been detected for ordering.
                         cls.__set_eq_class(my_instr,
-                                           "Swap base-index registers")
+                                           "Swap base-index registers 32-bit")
                         my_instr.set_mov_scheduling_flag = True
                         
                     else:
                         cls.__set_eq_class(my_instr,
-                                           "Swap base-index registers")
+                                           "Swap base-index registers 32-bit")
                         selected_my_instrs.append(my_instr)
                     
                     # Compute capacities.
