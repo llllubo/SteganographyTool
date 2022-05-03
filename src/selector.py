@@ -27,7 +27,22 @@ class Selector:
     
     
     @staticmethod
-    def __can_swap(instr: Instruction, operand: int) -> bool:
+    def __non_ebp_esp_reg(reg: Register_) -> bool:
+        if reg == Register.RSP or \
+            reg == Register.RBP or \
+            reg == Register.ESP or \
+            reg == Register.EBP or \
+            reg == Register.SP or \
+            reg == Register.BP or \
+            reg == Register.SPL or \
+            reg == Register.BPL:
+            return False
+        
+        return True
+    
+    
+    @classmethod
+    def __can_swap(cls, instr: Instruction, operand: int) -> bool:
         ##### can swap index and base registers.
 
         # def create_enum_dict(module):
@@ -38,6 +53,8 @@ class Selector:
             instr.memory_base != Register.NONE and \
             instr.memory_index != Register.NONE and \
             instr.memory_base != instr.memory_index and \
+            cls.__non_ebp_esp_reg(instr.memory_base) and \
+            cls.__non_ebp_esp_reg(instr.memory_index) and \
             instr.memory_index_scale == 1:
             # print("..")
             # print(f"{reg_to_str[instr.memory_base]} - {instr.memory_base}")
@@ -610,18 +627,17 @@ class Selector:
                     min_cap += my_instr.eq_class.min_cap
                     max_cap += my_instr.eq_class.max_cap
                     
-                ##### pozor v 'm' mozu byt len 32-bit a 64-bit registry
+                ##### pozor v 'm' mozu byt len 32-bit registry
                 ##### TOTO BUDE MAT VACSIU PRIORITU SPOMEDZI EQ CLASSES
                 ##### ^^ tento swap je prakticky nedetegovatelny..?
-                ##### cize je lepsie ho pouzit.. a nekradne ani instrukcie
-                ##### z inych tried, po porovnani na awk a Adobe32
                 # OPCODE m, r/imm
                 # OPCODE r, m
                 # BASE-INDEX swap while SCALE is 1.
                 # This class has higher priority over class 'SHL/SAL'
                 # and, in mode 'ext-sub-nops', also over classes
                 # 'ADD negated' and 'SUB negated'.
-                elif (   # OPCODE Memory, Register.
+                elif analyzer.bitness == 32 and \
+                ( (   # OPCODE Memory, Register.
                     re.match(
                         r'^.* r/m[0-9]{1,2}, r[0-9]{1,2}$',
                         op_code.instruction_string
@@ -638,7 +654,7 @@ class Selector:
                         r'^.* r[0-9]{1,2}, r/m[0-9]{1,2}$',
                         op_code.instruction_string
                     ) and cls.__can_swap(instr, 1)
-                ):
+                ) ):
                     
                     mnemo = op_code.instruction_string[:3]
                         

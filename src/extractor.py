@@ -155,7 +155,7 @@ class Extractor:
                           eq_class.class_name):
                     # Secret bit is stored at the place of Direction bit
                     # inside OPCODE.
-                    
+
                     # Read instruction bytes from file to be able to
                     # analyze it.
                     fd.seek(my_instr.foffset)
@@ -195,11 +195,12 @@ class Extractor:
                     # exchanged, as well.
                     # MOV instruction form this class can also be
                     # scheduled.
-                    continue
+
                     # Get type of order in which are memory registers
                     # present.
                     order = cls.__get_order_type(my_instr, None)
-
+                    print()
+                    print(f"{order}")
                     # Decode read Direction bit.
                     extracted_bits = cls.__decode(eq_class, order)
 
@@ -314,7 +315,7 @@ class Extractor:
                     eq_class.class_name == "TEST non-accumulator register":
                     # Secret bit is defined by Reg/Opcode bits of ModR/M
                     # byte inside instruction.
-                    
+
                     # Read instruction bytes from file to be able to
                     # analyze it.
                     fd.seek(my_instr.foffset)
@@ -348,7 +349,7 @@ class Extractor:
                     # operandoch al,al atd (reg8 -- pozor aj r12b atd) je OPCODE 0x85-0x1==0x84
                     # Podobne s AND.. klasicke 0x21, reg8 0x21-0x1==0x20
                     # Podobne s OR.. klasicke 0x09, reg8 0x09-0x1==0x08
-                    
+
                     # Read instruction bytes from file to be able to
                     # analyze it.
                     fd.seek(my_instr.foffset)

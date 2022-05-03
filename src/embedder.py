@@ -299,7 +299,7 @@ class Embedder:
         # Find out if base and index memory registers should be swapped
         # according to desired order determined by next encoding bit of
         # message.
-        
+        print(f"!! {instr.eq_class.members[idx]}")
         if instr.eq_class.members[idx] == "Ascending" and \
             instr.instruction.memory_base > instr.instruction.memory_index:
             return True
@@ -555,7 +555,7 @@ class Embedder:
                     # exchanged, as well.
                     # MOV instruction form this class can also be
                     # scheduled.
-                    
+
                     # Read instruction bytes from file to be able to
                     # modify it.
                     fd.seek(my_instr.foffset)
@@ -621,11 +621,14 @@ class Embedder:
                     # exchanged, as well.
                     # MOV instruction form this class can also be
                     # scheduled.
-                    continue
+
                     # Find out desired order for base-index according to
                     # the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
-
+                    print()
+                    print(f"{instr}, {my_instr.foffset:x}")
+                    fd.seek(my_instr.foffset)
+                    print(f"..{fd.read(len(instr)).hex()}")
                     # Decide if base and index registers should be
                     # swapped according to the next secret message bits
                     # or if they are in the right order.
@@ -635,15 +638,10 @@ class Embedder:
                         # modify it.
                         fd.seek(my_instr.foffset)
                         b_instr_fromf = fd.read(len(instr))
-                        
+                        print(f"{b_instr_fromf.hex()}")
                         # Convert read instruction from bytes to bits.
                         bits_instr = bitarray()
                         bits_instr.frombytes(b_instr_fromf)
-                        
-                        # print()
-                        # print(f"{instr}")
-                        # print(f"{b_instr_fromf}, {my_instr.foffset:x}")
-                        # print(f"{b_instr_fromf.hex()}")
                         
                         # Get and find an opcode of instruction.
                         instr_opcode = OpCodeInfo(instr.code).op_code
@@ -652,8 +650,8 @@ class Embedder:
                                                            instr_opcode)
                         
                         rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
-                        # print(f"REX: {rex_idx}")
-                        # print(f"{bits_instr}")
+                        print(f"REX: {rex_idx}")
+                        print(f"{bits_instr}")
                         
                         # Swap registers. If swap is not successful,
                         # nothing is embeddded and instr. is skipped.
@@ -669,8 +667,8 @@ class Embedder:
                         # Delete already embedded bit from list.
                         del bits_mess[:len(eq_class.encoded_idxs[idx])]
                     
-                    # fd.seek(my_instr.foffset)
-                    # print(f"{fd.read(len(instr)).hex()}")
+                    fd.seek(my_instr.foffset)
+                    print(f"..{fd.read(len(instr)).hex()}")
                     # sys.exit()
                     
                 # Class does not encodes class members, as it does not
@@ -823,7 +821,7 @@ class Embedder:
                 
                 elif re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) 32-bit$",
                           eq_class.class_name):
-                    
+
                     # Read instruction bytes from file to be able to
                     # modify it.
                     fd.seek(my_instr.foffset)
