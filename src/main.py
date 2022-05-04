@@ -9,9 +9,9 @@ Project: Bachelor's thesis, BUT FIT Brno
 """ 
  
 
+from statistics import mode
 import sys
 import time
-from bitarray import bitarray
 from iced_x86 import *
 
 from args_parser import ArgsParser
@@ -40,12 +40,13 @@ class Main:
 
     @staticmethod
     def run() -> None:
-       
+        
         args = ArgsParser.parse()
+        
         # print(f"\nargs:\n{args}\n")
         
-        # Only modes 'embed' and 'analyze' require cover file,
-        # others require stego-file.
+        # Modes 'embed' and 'analyze' require cover file, others require
+        # stego-file.
         if args.mode == "e" or \
            args.mode == "embed" or \
            args.mode == "a" or \
@@ -53,35 +54,33 @@ class Main:
             inputf = args.cover_file
         else:
             inputf = args.stego_file
-            
         
-        # hex_string = "0x0f1f009090909066909090"
-        # mess = bytes.fromhex(hex_string[2:])
-        # try:
-        #     # fd = open("exace-testing/AcroRd32.exe", "r+b")
-        #     fd = open("aa", "r+b")
-        # except IOError:
-        #     print("ERROR! ", file=sys.stderr)
-        # else:
-        #     # fd.seek(offset)
-        #     fd.seek(0x10a1)
-        #     fd.write(mess)
-        #     fd.close()
-        # return
+        if args.verbose:
+            print("Disassembling given executable...")
+            sys.stdout.flush()
         
-        # Disassemble all instructions from executable.
-        # Needed to keep all of them because of flags checking.
-        # It also finds useable instructions according to method and 
-        # compute embedding capacity.
+        # Disassemble all instructions from executable and instantiate
+        # class MyInstruction for every decoded one.
         all_my_instrs, bitness = Disassembler.disassemble(inputf)
+        
+        if args.verbose:
+            print("Parsing configuration file...")
+            sys.stdout.flush()
         
         # Prepare instances of equivalent classes.
         EqClassesProcessor.prepare_eq_classes(args.method, args.config_file)
         
+        if args.verbose:
+            print("Analyzing given executable...")
+            sys.stdout.flush()
+        
         # Prepare empty Analyzer to be filled by Selector.
         analyzer = Analyzer(bitness, 0, 0, 0.0, 0, 0)
-        potential_my_instrs = \
-            Selector.select(all_my_instrs, args.method, args.force, analyzer)
+        potential_my_instrs = Selector.select(all_my_instrs,
+                                              args.method,
+                                              args.force,
+                                              inputf,
+                                              analyzer)
             
         # for a, b in itertools.combinations(potential_my_instrs, 2):
         #     if id(a) == id(b):
@@ -107,25 +106,32 @@ class Main:
         #         print()
         # print(f"len: {tmp}")
         # return
-
-        ##### TESTOVANIE
-        # opat sa disassembluje vstupny subor a printnu sa instrukcie..
-        # chcem zmenu len tam kde som ju spravil.. diff
         
         # If there was not Analyze mode given, all necessary operations
         # over equivalent classes are done.
         if args.mode != "a" and args.mode != "analyze":
+            
+            if args.verbose:
+                if args.mode == "x" or args.mode == "extract":
+                    word = "extracting"
+                else:
+                    word = "embedding"
+                print(f"Preparing for {word}...")
+                sys.stdout.flush()
+            
             # Encode indexes of each class members. They will be used
             # while embedding/extracting/resetting.
             EqClassesProcessor.encode_members_indexes()
+            
             # Parse equivalent class members if needed (this is not
             # applied for example on NOP classes).
             EqClassesProcessor.parse_members()
-        #     print(EqClassesProcessor.all_eq_classes)
-        # return
-        ######### POZOR NA ENDIANNESS, NEVIEM CI SOM DOBRE TVORIL BYTES..
         
         if args.mode == "e" or args.mode == "embed":
+            
+            if args.verbose:
+                print("Preprocessing given data...")
+                sys.stdout.flush()
             
             # Get secret data and file extension in bytes.
             b_secret_data, b_fext = Embedder.get_secret_data(args.secret_message)
@@ -136,15 +142,18 @@ class Main:
             
             # Lossless compression of secret data.
             b_comp = Embedder.compress(b_secret_data)
+            
             # print(f"len(b_comp): {len(b_comp):,}")
             
             # Encrypt compressed secret data.
             b_encrypted = Embedder.encrypt_data(b_comp)
+            
             # Compute length of encrypted data and XOR the length with
             # password. The length is 32 bytes long and do not count
             # with itself neither with 8 bytes long file extension
             # (it's only raw data).
             b_xored_len = Embedder.xor_data_len(b_encrypted)
+            
             # XOR file extension with password. The extension is always
             # 8 bytes long.
             b_xored_fext = Embedder.xor_fext(b_fext)
@@ -153,93 +162,75 @@ class Main:
             b_message = b_xored_len + b_xored_fext + b_encrypted
             
             # b_message = len(b_secret_data).to_bytes(SIZE_OF_DATA_LEN, byteorder="little") + b_fext + b_secret_data
-            print(f"{b_message}")
-            
-            print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
-            print(f"MAX CAPACITY: {analyzer.max_capacity / 8} bytes")
-            print(f"len(b_message): {len(b_message)} bytes")
-            print(f"b_message: {b_message}")
+            # print(f"{b_message}")
+            # print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
+            # print(f"MAX CAPACITY: {analyzer.max_capacity / 8} bytes")
+            # print(f"len(b_message): {len(b_message)} bytes")
+            # print(f"b_message: {b_message}")
 
-            # Check if cover file has sufficient capacity and inform.
-            # Function can exit program if required by user.
+            # Check if cover file has sufficient capacity and if not,
+            # inform and exit the program.
             Embedder.check_cap(len(b_message), analyzer)
 
-            # vklada sa sprava -- prechod skrz ekviv. triedy atd. podla metody
+            if args.verbose:
+                print("Embedding...")
+                sys.stdout.flush()
+
+            # Embedding desired data according selected method.
             Embedder.embed(inputf,
                            b_message,
                            potential_my_instrs,
                            analyzer.bitness)
             
-            print("---------------------------------------------------")
-            
-            # ############extrakcia
-            
-            # # extract xorovanu dlzku dat -- 32B
-            
-            # # UnXOR extracted length of data with password.
-            # data_len = Extractor.unxor_data_len(b_xored_len)
-            # print(f"extracted (encrypted) data len: {data_len:,}")
-            
-            # # extract fext -- 8B
-            
-            # # UnXOR extracted file extension with password.
-            # b_unxored_fext = Extractor.unxor_fext(b_xored_fext)
-            
-            # # extract zvysne data -- pouzitie metody
-            
-            # # Decrypt extracted data.
-            # b_decrypted = Extractor.decrypt_data(b_encrypted)
-            
-            # # Decompress decrypted data and get secret message.
-            # b_decomp = Extractor.decompress(b_decrypted)
-            
-            # ##### len kontrola
-            # if b_secret_data == b_decomp:
-            #     print("OK kompresia")
-            # else:
-            #     print("NEOK kompresia")
-            # ##### len kontrola
-            # if b_fext == b_unxored_fext:
-            #     print("OK fext")
-            # else:
-            #     print("NEOK fext")
-            
-            # Extractor.make_output(b_decomp, b_unxored_fext)
-            
         elif args.mode == "x" or args.mode == "extract":
             
-            ##### extrakcia
-            # prechod skrz list referencii na instrukcie na extrakciu
-            # mam dlzku a podla nej iterujem a extrahujem
+            if args.verbose:
+                print("Extracting...")
+                sys.stdout.flush()
             
             # Extract all data.
             bits_extracted = Extractor.extract(inputf,
-                                               potential_my_instrs,
-                                               bitness)
+                                               potential_my_instrs)
             
-            print(f"main - extracted_len: {len(bits_extracted) / 8}")
-            print(f"{bits_extracted.tobytes()}")
+            # print(f"main - extracted_len: {len(bits_extracted) / 8}")
+            # print(f"{bits_extracted.tobytes()}")
             # b_fext = bits_extracted[:SIZE_OF_FEXT * 8].tobytes()
             # print(f"{b_fext}")
             # b_data = bits_extracted[SIZE_OF_FEXT * 8:].tobytes()
             # Extractor.make_output(b_data, b_fext)
             
+            if args.verbose:
+                print("Postprocessing of extracted data...")
+                sys.stdout.flush()
+            
             # Locate and prepare file extension bits.
             b_xored_fext = bits_extracted[:SIZE_OF_FEXT * 8].tobytes()
+            
             # File extension bits can be deleted to get pure data bits.
             del bits_extracted[:SIZE_OF_FEXT * 8]
+            
             # print(f"{b_xored_fext}")
+            
             # UnXOR extracted file extension with password.
             b_unxored_fext = Extractor.unxor_fext(b_xored_fext)
+            
             # print(f"{b_unxored_fext}")
             
             # Decrypt extracted data.
             b_encrypted = bits_extracted.tobytes()
             b_decrypted = Extractor.decrypt_data(b_encrypted)
+            
             # print(f"{b_decrypted}")
+            
             # Decompress decrypted data and get secret message.
             b_decomp = Extractor.decompress(b_decrypted)
+            
             # print(f"{b_decomp}")
+            
+            if args.verbose:
+                print("Generating output...")
+                sys.stdout.flush()
+            
             Extractor.make_output(b_decomp, b_unxored_fext)
         
         elif args.mode == "r" or args.mode == "reset":

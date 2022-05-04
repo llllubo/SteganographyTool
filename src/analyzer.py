@@ -108,6 +108,7 @@ class Analyzer:
             print()
         
         print(f"\tMinimum: \t{(self.min_capacity / 8):12,.3f} Bytes", end="")
+        
         # For minimum capacity.
         b = self.min_capacity // 8
         bits = self.min_capacity % 8
@@ -120,6 +121,7 @@ class Analyzer:
             print()
         
         print(f"\tMaximum: \t{(self.max_capacity / 8):12,.3f} Bytes", end="")
+        
         # For maximum capacity.
         b = int(self.max_capacity // 8)
         bits = int(self.max_capacity % 8)

@@ -91,15 +91,14 @@ class Extractor:
     @classmethod
     def extract(cls,
                 fexe: str,
-                potential_my_instrs: list,
-                bitness: int) -> bitarray:
+                potential_my_instrs: list) -> bitarray:
         
         try:
             fd = open(fexe, "rb")
         except IOError:
             print(f"ERROR! Can not open stego-file for extracting: {fexe}",
                   file=sys.stderr)
-            sys.exit(101)
+            sys.exit(105)
         
         # Prepared bitarray to store extracted bits here. At the end it
         # will be returned by this function.
@@ -123,6 +122,7 @@ class Extractor:
         # skipped as they were already used by first instruction
         # from their group (3 and 2 Bytes Long NOP classes).
         skip = 0
+        
         # Skip flag determines first occurence of scheduling MOV if True.
         skip_mov = False
             
@@ -131,7 +131,6 @@ class Extractor:
             if skip:
                 # Skip current NOP instruction.
                 skip -= 1
-                # print("SKIPPING")
                 continue
             
             # For speed performance.
@@ -155,6 +154,8 @@ class Extractor:
                           eq_class.class_name):
                     # Secret bit is stored at the place of Direction bit
                     # inside OPCODE.
+                    # MOV instruction from this class can also be
+                    # scheduled - NOT IMPLEMENTED.
 
                     # Read instruction bytes from file to be able to
                     # analyze it.
@@ -169,9 +170,11 @@ class Extractor:
                     instr_opcode = OpCodeInfo(instr.code).op_code
                     opcode_idx = common.get_opcode_idx(b_instr_fromf,
                                                        instr_opcode)
+                    
                     # print()
                     # print(f"{b_instr_fromf.hex()}, {instr_opcode:x}, {opcode_idx}")
                     # print(f"{bits_instr}")
+                    
                     dir_bit_offset = (opcode_idx * 8) + 6
                     # Decode read Direction bit.
                     extracted_bits = cls.__decode(eq_class,
@@ -185,31 +188,28 @@ class Extractor:
                     # if f"{my_instr.foffset:x}" == f"{0x23e1b:x}":
                     #     sys.exit()
                 
-                # Class does not encodes class members, as it does not
-                # have any. Encoding is lexicographic order of used
-                # registers name.
+                # Encoding is lexicographic order of used registers name
+                # and it's determined by configuration file.
                 if eq_class.class_name == "Swap base-index registers 32-bit":
                     # Instruction form changes (SIB.base <=> SIB.index),
                     # therefore, also, operands must be changed. If REX
                     # prefix is present, proper bits of prefix are
                     # exchanged, as well.
-                    # MOV instruction form this class can also be
-                    # scheduled.
+                    # MOV instruction from this class can also be
+                    # scheduled - NOT IMPLEMENTED.
 
                     # Get type of order in which are memory registers
                     # present.
                     order = cls.__get_order_type(my_instr, None)
-                    print()
-                    print(f"{order}")
+                    
                     # Decode read Direction bit.
                     extracted_bits = cls.__decode(eq_class, order)
 
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
                     
-                # Class does not encodes class members, as it does not
-                # have any. Encoding is lexicographic order of used
-                # instructions strings.
+                # Encoding is lexicographic order of used instructions
+                # strings and it's determined by configuration file.
                 if eq_class.class_name == "MOV Scheduling" or \
                     my_instr.mov_scheduling_flag:
                     
@@ -277,11 +277,16 @@ class Extractor:
                     
                     # Convert bytes to hex string.
                     hex_instr = "0x" + b_instr_fromf.hex()
-                    print()
-                    print(f"{hex_instr}, {my_instr.instruction}")
+                    
+                    # print()
+                    # print(f"{hex_instr}, {my_instr.instruction}, {skip} -- {eq_class.class_name}")
+                    
                     # Decode read instruction.
+                    extracted_bits = bitarray(endian="little")
                     extracted_bits = cls.__decode(eq_class, hex_instr)
-                    print(f"{extracted_bits}")
+                    
+                    # print(f"{extracted_bits}, {extracted_bits.tobytes().hex()}")
+                    
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
 
@@ -292,22 +297,35 @@ class Extractor:
                     
                     # Get number of last instruction bits which contain
                     # message bits.
-                    bits_cnt = common.count_useable_bits_from_nop(instr, bitness)
+                    fd.seek(my_instr.foffset)
+                    bits_cnt = \
+                        common.count_useable_bits_from_nop(instr,
+                                                           fd.read(len(instr)))
                     # There is 100% chance that it will be multiple of 8.
                     b_cnt = bits_cnt // 8
+                    
+                    # fd.seek(my_instr.foffset)
+                    # print()
+                    # print(f"{my_instr.foffset:x}, {my_instr.instruction}, {fd.read(len(instr)).hex()}")
+                    # print(f"{bits_cnt}, {b_cnt}")
                     
                     # Extract from executable.
                     pos = my_instr.foffset + (len(instr) - b_cnt)
                     fd.seek(pos)
                     b_extracted = fd.read(b_cnt)
                     
+                    # print(f"pos: {pos:x}")
+                    
                     # Convert extracted bytes to bits.
                     extracted_bits = bitarray(endian="little")
                     extracted_bits.frombytes(b_extracted)
                     
+                    # print(f"{extracted_bits}, {extracted_bits.tobytes().hex()}")
+                    
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
-                    # sys.exit()
+                    
+                    # print(f"bajtov mam uz: {len(bits_mess) // 8}")
                 
                 # These two classes can be merged as they modify only
                 # Reg/Opcode field inside ModR/M byte.
@@ -421,7 +439,7 @@ class Extractor:
         ##### KONTROLA CI SA EXTRAHOVALO VSETKO CO SA MALO
         if len(bits_mess) < extract_limit:
             # Not all requested data could be extracted.
-            pass    ######### HANDEL IT
+            pass    ######### HANDEL IT - nemalo by nastat
             print(f"SKONCILA EXTRAKCIA A NEEXTRAHOVALO SA VSETKO - small cap.")
         
         # Correctness of extracted data. Bits extracted in addition,
@@ -433,8 +451,9 @@ class Extractor:
     
     @classmethod
     def unxor_data_len(cls, xored_len: bytes) -> int:
-        # vraciam vyxorovanu dlzku dat ako cislo
-        # uz vytvara kluc a pyta heslo
+        # Function returns XORed data length as integer and also it
+        # requires password from user.
+
         cls.__b_key, cls.__b_passwd = common.gen_key_from_passwd()
         
         # Prepare password length ONLY for XOR operation.
@@ -444,8 +463,13 @@ class Extractor:
         else:
             b_passwd = cls.__b_passwd[:common.SIZE_OF_DATA_LEN]
 
-        # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
-        # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
+        # Data length bytes are going to be unXORed with password
+        # of same size. If given password is longer, it's truncated.
+        # This is security reason as if whole password bytes were
+        # XORed with null padding of data length bytes, password
+        # characters would map to the XORed data length and could be
+        # readable. Reversed cycle is used to avoid problem when
+        # null byte is in the middle of data.
         null_padding = 0
         
         for b in reversed(xored_len):
@@ -468,9 +492,11 @@ class Extractor:
     
     @classmethod
     def unxor_fext(cls, xored_fext: bytes) -> bytes:
-        # vraciam unXORovany fext ktory ma 8 bajtov
+        # Function returns unXORed file extension in bytes of proposed
+        # length.
         
-        # xoruje sa len ak je nejaka extension, inak by sa heslo vyxorovalo do extension (xoroval by som heslo s nulami == heslo).
+        # Check if there is any file extension, if not, return given
+        # bytes.
         if xored_fext != bytes(common.SIZE_OF_FEXT):
             
             # Prepare password length ONLY for XOR operation.
@@ -480,8 +506,13 @@ class Extractor:
             else:
                 b_passwd = cls.__b_passwd[:common.SIZE_OF_FEXT]
             
-            # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
-            # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
+            # File extension bytes are going to be unXORed with password
+            # of same size. If given password is longer, it's truncated.
+            # This is security reason as if whole password bytes were
+            # XORed with null padding of data length bytes, password
+            # characters would map to the XORed data length and could be
+            # readable. Reversed cycle is used to avoid problem when
+            # null byte is in the middle of data.
             null_padding = 0
             
             for b in reversed(xored_fext):
@@ -492,6 +523,7 @@ class Extractor:
             i = common.SIZE_OF_FEXT - null_padding
             
             b_unxored_fext = bytes([a ^ b for a, b in zip(xored_fext, b_passwd[:i])])
+            
             print(f"...{b_unxored_fext}")
             
             # Add null bytes after XOR.
@@ -508,14 +540,14 @@ class Extractor:
     
     @classmethod
     def decrypt_data(cls, data: bytes) -> bytes:
-        # vracia desifrovane data
+        # Decrypt given data in bytes.
         cipher = Fernet(cls.__b_key)
         
         try:
             b_decrypted = cipher.decrypt(data)
         except InvalidToken:
             print("ERROR! Wrong password for extracting data.", file=sys.stderr)
-            sys.exit(101)
+            sys.exit(105)
         
         print(f"b_decrypted data len: {len(b_decrypted):,}")
         
@@ -524,14 +556,14 @@ class Extractor:
     
     @staticmethod
     def decompress(content: bytes) -> bytes:
-        
+        # Decompress given data.
         lzd = lzma.LZMADecompressor(format=lzma.FORMAT_XZ)
         
         try:
             b_decomp = lzd.decompress(content)
         except lzma.LZMAError:
             print("ERROR! While preprocessing extracted data an error occured.", file=sys.stderr)
-            sys.exit(101)
+            sys.exit(105)
         
         print(f"b_decomp data len: {len(b_decomp):,}")
         
@@ -561,7 +593,7 @@ class Extractor:
             pass
         except OSError:
             print("ERROR! Creation of output directory failed.", file=sys.stderr)
-            sys.exit(101)
+            sys.exit(105)
         
         # Get rid of null bytes in file extension, if present.
         ext = ""
@@ -580,7 +612,7 @@ class Extractor:
             fd = open(f"./extracted/{fname}", "wb")
         except IOError:
             print(f"ERROR! Can not access an output file: {fname}", file=sys.stderr)
-            sys.exit(101)
+            sys.exit(105)
         else:
             fd.write(data)
             fd.close()

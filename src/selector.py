@@ -1,4 +1,5 @@
 import re
+import sys
 
 from iced_x86 import *
 from my_instruction import MyInstruction
@@ -43,11 +44,7 @@ class Selector:
     
     @classmethod
     def __can_swap(cls, instr: Instruction, operand: int) -> bool:
-        ##### can swap index and base registers.
-
-        # def create_enum_dict(module):
-        #     return {module.__dict__[key]:key for key in module.__dict__ if isinstance(module.__dict__[key], int)}
-        # reg_to_str = create_enum_dict(Register)
+        # Decide if base ans index memory registers can be swapped.
         
         if instr.op_kind(operand) == OpKind.MEMORY and \
             instr.memory_base != Register.NONE and \
@@ -56,11 +53,7 @@ class Selector:
             cls.__non_ebp_esp_reg(instr.memory_base) and \
             cls.__non_ebp_esp_reg(instr.memory_index) and \
             instr.memory_index_scale == 1:
-            # print("..")
-            # print(f"{reg_to_str[instr.memory_base]} - {instr.memory_base}")
-            # print(f"{reg_to_str[instr.memory_index]} - {instr.memory_index}")
-            # print(f"{instr.memory_index_scale}")
-            # print("..")
+            
             return True
         
         return False
@@ -68,6 +61,8 @@ class Selector:
     
     @staticmethod
     def __is_stack_reg(instr: Instruction) -> bool:
+        # Check occurence of stack register within given instruction.
+        
         if instr.op0_kind == OpKind.REGISTER and \
             (
                 instr.op0_register == Register.RSP or \
@@ -84,16 +79,18 @@ class Selector:
                                    my_instr: MyInstruction,
                                    rflags_to_check: int,
                                    force_flag: bool) -> bool:
-        ## MUSIM IST PODLA EXECUTION FLOW - PORIESIT SKOKY
-        # ^^ prechadzam kym nepride end of function alebo kym nepride instrukcia ktora modifikuje tento znak skor ako pride instrukcia, ktora ho cita.
-        # LIVENESS DETECTION OF MODIFIED FLAGS BY REPLACEMENT INSTRUCTION.
+        # Liveness detection of modified flags by replacement instruction.
+        # Check given flags if they are live until any instruction which
+        # modifies it come. Execution flow is respected while checking.
+        # Flag is live if instruction which reads it come earlier than
+        # instruction which modofies it. Basic checking is done until
+        # any jump is present. If 'force' flag was given by user,
+        # unconditional jumps are traced and this can achieve bigger
+        # capacity. The end of any function stops checking with positive
+        # result.
         
         if rflags_to_check == RflagsBits.NONE:
             return True
-        
-        # got_op_code = my_instr.instruction.op_code()
-        # print("\n\n\n\n\n\n")
-        # print(f"{got_op_code.instruction_string:16} | 0b{rflags_to_check:>8b}")
         
         all_rflags = (RflagsBits.OF, RflagsBits.SF, RflagsBits.ZF,
                       RflagsBits.AF, RflagsBits.CF, RflagsBits.PF,
@@ -110,8 +107,6 @@ class Selector:
         # (modified by another instruction).
         safe_rflags = [False] * len(check_rflags)
 
-        # orig_my_instr = my_instr
-
         # In 'my_instr' is always present next instruction from
         # previous one.
         my_instr = all_instrs[my_instr.ioffset + 1]
@@ -120,22 +115,20 @@ class Selector:
             
             rflags_read = my_instr.instruction.rflags_read
             rflags_modified = my_instr.instruction.rflags_modified
-            op = my_instr.instruction.op_code()
-            # print(f"next: {my_instr.ioffset} - {op.instruction_string}, modified: {rflags_modified:b}, read: {rflags_read:b}",)
 
             for idx, rflag in enumerate(check_rflags):
-                # print(f"rflag: {rflag:b}")
                 # Liveness detection of checked flags.
+                
                 if (rflag & rflags_read) != 0:
                     # Instruction tests checked flag.
                     return False
+                
                 if (rflag & rflags_modified) != 0:
                     # Instruction modifies checked flag.
                     safe_rflags[idx] = True
-                    # print(f"CHECKED rflag: {idx}, {rflag:b}")
+                    
                     # End immediately when all flags are safe.
                     if False not in safe_rflags:
-                        # print(f".. all flags are safe -- OK")
                         return True
             
             # Only because of clearer conditions.
@@ -170,33 +163,22 @@ class Selector:
                         get_target = instr.far_branch_selector
                         
                     else:
-                        # print("UNSUPPORTED CALL OR UNCOND. BRANCH...")
                         return False
                 
                 else:
-                    # print("UNSUPPORTED CALL OR UNCOND. BRANCH")
                     return False
                     
-                # print(f"TUTUUUTUTUTUTUTT: 0x{get_target:x}")
                 found_instr = [my_instr 
                                 for my_instr in all_instrs 
                                     if my_instr.instruction.ip == get_target]
                 
                 if found_instr:
-                    # print(f"najdene? {found_instr[0].ioffset} - {found_instr[0].foffset:x}")
                     my_instr = found_instr[0]
                 else:
-                    # print("nenajdene")
                     return False
             
             else:   
-                # print("NOT SUPPORTED JUMP")
                 return False
-        
-        # print(f".. OK -- end of function: ", end="")
-        # for j in check_rflags:
-        #     print(f"{j:b}, ", end="")
-        # print()
 
         return True
     
@@ -237,13 +219,22 @@ class Selector:
         return False
 
     
-    # ak do registra zapisujem, nesmiem uz z neho citat !!! ak sa nachadza v MEMORY, je to citanie !!! citat z neho mozem len v tej istej instruckii (mov rax, rax alebo mov rax,[rax]).
+    # ak do registra zapisujem, nesmiem uz z neho citat !!! ak sa nachadza v MEMORY, je to citanie !!! citat z neho mozem len v tej istej instruckii .
     # ak zapisujem do MEM, z tohto miesta uz nesmiem citat ani tam zapisat.
     @classmethod
     def __check_independency(cls,
                              prev_mov: Instruction,
                              curr_mov: Instruction,
                              bitness: int) -> bool:
+        # Two registers are dependent on each other if their order is
+        # irreplaceable.
+        # If write to any register is performed, it can not be used
+        # anymore (bith sides). If register occurs on left side as
+        # memory operand, it's reading from it and can be used next time
+        # (MOV rax, rax; MOV rax, [rax]).
+        # From specific register or memory location can be read more
+        # times. If it's writing to any memory location, this location
+        # can not be used anymore.
         
         # Can not be exactly two same MOV instructions.
         if prev_mov.eq_all_bits(curr_mov):
@@ -252,10 +243,6 @@ class Selector:
         # differ only in Direction Bit as MOV can -- in that case they
         # actually are equal and can not be ordered lexicographically.
         elif f"{prev_mov:ixr}" == f"{curr_mov:ixr}":
-            # print(f"{prev_mov:ixr} | {curr_mov:ixr}")
-            # op1 = prev_mov.op_code()
-            # op2 = curr_mov.op_code()
-            # print(f"{op1.instruction_string} | {op2.instruction_string}\n")
             return False
         
         # If some mov write to the REG, this REG can not be used anymore
@@ -310,6 +297,8 @@ class Selector:
     
     @staticmethod
     def __set_eq_class(instr: MyInstruction, eq_class_name: str) -> None:
+        # Assign desired equivalent class object to the MyInstruction
+        # object according to given eq. class name.
         for obj_eq_class in EqClassesProcessor.all_eq_classes:
             if obj_eq_class.class_name == eq_class_name:
                 instr.set_eq_class = obj_eq_class
@@ -320,6 +309,7 @@ class Selector:
                all_my_instrs: list,
                method: str,
                force_flag: bool,
+               fexe: str,
                analyzer: Analyzer) -> list:
         
         selected_my_instrs = []
@@ -330,6 +320,14 @@ class Selector:
         avg_cap = 0.0       # In BITS
         min_cap = 0         # In BITS
         max_cap = 0         # In BITS
+        
+        # File is opened because of more than 3 bytes long NOP class and
+        # is closed at the end of Selector.
+        try:
+            fd = open(fexe, "rb")
+        except IOError:
+            print(f"ERROR! Can not open cover-file for analysis: ", file=sys.stderr)
+            sys.exit(102)
         
         for my_instr in all_my_instrs:
             
@@ -553,10 +551,9 @@ class Selector:
                         selected_my_instrs.append(my_instr)
                         
                         # Compute capacities.
-                        cap = count_useable_bits_from_nop(
-                            instr,
-                            analyzer.bitness
-                            )
+                        fd.seek(my_instr.foffset)
+                        cap = count_useable_bits_from_nop(instr,
+                                                          fd.read(len(instr)))
                         avg_cap += float(cap)
                         min_cap += cap
                         max_cap += cap
@@ -626,16 +623,16 @@ class Selector:
                     avg_cap += my_instr.eq_class.avg_cap
                     min_cap += my_instr.eq_class.min_cap
                     max_cap += my_instr.eq_class.max_cap
-                    
-                ##### pozor v 'm' mozu byt len 32-bit registry
-                ##### TOTO BUDE MAT VACSIU PRIORITU SPOMEDZI EQ CLASSES
-                ##### ^^ tento swap je prakticky nedetegovatelny..?
-                # OPCODE m, r/imm
-                # OPCODE r, m
-                # BASE-INDEX swap while SCALE is 1.
+
+                # OPCODE m, r/imm; OPCODE r, m
+                # BASE-INDEX swap while SCALE is 1. It can not be used
+                # if any EBP/ESP-like registers are used as they swap
+                # memory segments related to their position (base-index)
+                # and also it can be used only for 32-bit executables.
                 # This class has higher priority over class 'SHL/SAL'
                 # and, in mode 'ext-sub-nops', also over classes
-                # 'ADD negated' and 'SUB negated'.
+                # 'ADD negated' and 'SUB negated'. It's set like that,
+                # because of good stealthness of this redundancy.
                 elif analyzer.bitness == 32 and \
                 ( (   # OPCODE Memory, Register.
                     re.match(
@@ -737,7 +734,7 @@ class Selector:
                 ## can be directly specified - therefore there is
                 ## special regular expression sometimes.
 
-                ## CLASS TEST/AND/OR.
+                # TEST/AND/OR.
                 # TEST r, r\m does not exist.
                 if re.match(
                         r'^TEST r/m[0-9]{1,2}, r[0-9]{1,2}$',
@@ -768,7 +765,7 @@ class Selector:
                     min_cap += my_instr.eq_class.min_cap
                     max_cap += my_instr.eq_class.max_cap
                     
-                ## CLASS SUB/XOR.
+                # SUB/XOR.
                 elif re.match(
                         r'^(?:SUB|XOR) (?:r/m|r)[0-9]{1,2}, (?:r|r/m)[0-9]{1,2}$',
                         op_code.instruction_string
@@ -853,7 +850,7 @@ class Selector:
                     min_cap += my_instr.eq_class.min_cap
                     max_cap += my_instr.eq_class.max_cap
                     
-                ## CLASSES ADD & SUB WITH THEIR NEGATED IMMEDIATES.
+                # CLASSES ADD & SUB WITH THEIR NEGATED IMMEDIATES.
                 # ADD r/m, imm
                 elif re.match(
                         r'^ADD [a-zA-Z0-9/]{1,6}, imm[0-9]{1,2}$',
@@ -879,7 +876,6 @@ class Selector:
                             
                             cls.__set_eq_class(my_instr, "ADD negated")
                             selected_my_instrs.append(my_instr)
-                            ########## nulu nemozem negovat, zachovam ju
                             
                             # Compute capacities.
                             avg_cap += my_instr.eq_class.avg_cap
@@ -942,7 +938,6 @@ class Selector:
 
                             cls.__set_eq_class(my_instr, "SUB negated")
                             selected_my_instrs.append(my_instr)
-                            ########## nulu nemozem negovat, zachovam ju
                             
                             # Compute capacities.
                             avg_cap += my_instr.eq_class.avg_cap
@@ -981,6 +976,8 @@ class Selector:
                             max_cap += my_instr.eq_class.max_cap
         
         
+        fd.close()
+        # Fullfil analyzer attributes.
         analyzer.set_total_instrs = len(all_my_instrs)
         analyzer.set_useable_instrs = len(selected_my_instrs)
         analyzer.set_avg_capacity = avg_cap

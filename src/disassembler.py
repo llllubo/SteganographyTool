@@ -78,7 +78,7 @@ class Disassembler:
         
         return (bitness, code_sections)
     
-    
+    ######################## DEBUG
     @staticmethod
     def __set_formatter() -> object:
         formatter = Formatter(FormatterSyntax.INTEL)
@@ -97,6 +97,7 @@ class Disassembler:
         formatter.signed_immediate_operands = True
         
         return formatter
+    ######################## END DEBUG
 
     
     @classmethod
@@ -114,7 +115,9 @@ class Disassembler:
         # code section.
         all_my_instrs = []
         
-        formatter = cls.__set_formatter()
+        ######################## DEBUG
+        # formatter = cls.__set_formatter()
+        ######################## END DEBUG
         
         # Index of all decoded instructions.
         i = 0
@@ -141,11 +144,11 @@ class Disassembler:
                     MyInstruction(instr, instr_foffset, i, None)
                     )
                 
-                ######################## KONTROLNY VYPIS
+                ######################## DEBUG
                 # got_op_code = instr.op_code()
                 # disasm = formatter.format(instr)
                 # print(f"{i:8}   {instr_foffset:6x}    {got_op_code.instruction_string:<16}     {disasm:<36}")
-                ######################## KONIEC KONTROLNY VYPIS
+                ######################## END DEBUG
                 
                 i += 1
             # print()

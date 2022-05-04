@@ -99,7 +99,7 @@ class EqClassesProcessor:
             fd = open(fconfig, "r")
         except IOError:
             print(f"ERROR! Can not load configuration file: {fconfig}", file=sys.stderr)
-            sys.exit(101)
+            sys.exit(103)
         
         obj_json = json.load(fd)
         fd.close()
@@ -190,7 +190,7 @@ class EqClassesProcessor:
                     if not re.match(r'^(?:Ascending|Descending)$',mem.strip()):
                         print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
                             file=sys.stderr)
-                        sys.exit(102) 
+                        sys.exit(103) 
             
             elif eq_class.class_name == "TEST non-accumulator register" or \
                 eq_class.class_name == "SHL/SAL":
@@ -202,7 +202,7 @@ class EqClassesProcessor:
                 except ValueError:
                     print(f"ERROR! While parsing equivalent class members an error occured.",
                           file=sys.stderr)
-                    sys.exit(102)
+                    sys.exit(103)
                     
             elif re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) 32-bit$",
                           eq_class.class_name):
@@ -218,7 +218,7 @@ class EqClassesProcessor:
                     else:
                         print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
                           file=sys.stderr)
-                        sys.exit(102)  
+                        sys.exit(103)  
                     
             elif eq_class.class_name == "TEST/AND/OR":
                 
@@ -257,7 +257,7 @@ class EqClassesProcessor:
                             else:
                                 # Wrong class member inside config file.
                                 print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}", file=sys.stderr)
-                                sys.exit(102)
+                                sys.exit(103)
             
             elif eq_class.class_name == "SUB/XOR":
 
@@ -290,7 +290,7 @@ class EqClassesProcessor:
                         else:
                             # Wrong class member inside config file.
                             print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}", file=sys.stderr)
-                            sys.exit(102)
+                            sys.exit(103)
                         
             
             elif re.match(r"^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
@@ -312,7 +312,7 @@ class EqClassesProcessor:
                     else:
                         print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
                           file=sys.stderr)
-                        sys.exit(102)              
+                        sys.exit(103)              
                     
             elif eq_class.class_name == "ADD negated":
                 # ADD and SUB instructions have both same opcodes, but
@@ -331,7 +331,7 @@ class EqClassesProcessor:
                         # Wrong format of class member.
                         print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
                           file=sys.stderr)
-                        sys.exit(102)
+                        sys.exit(103)
             
             elif eq_class.class_name == "SUB negated":
                 # ADD and SUB instructions have both same opcodes, but
@@ -350,4 +350,4 @@ class EqClassesProcessor:
                         # Wrong format of class member.
                         print(f"ERROR! While parsing equivalent class members from file an error occured: {eq_class.class_name}",
                           file=sys.stderr)
-                        sys.exit(102)
+                        sys.exit(103)

@@ -20,6 +20,10 @@ class MyInstruction:
         # and eq_class is set to MOV Scheduling, then only Scheduling
         # is applied).
         # Implicitly False - will be set later on.
+        ## This functionality is used only for analysis as combination
+        ## of MOV Scheduling with overlapping classes was not implemented
+        ## but can be in a future. MOV scheduling with no overlapping
+        ## classes was implemented, but this flag is not necessary for it.
         self.__mov_scheduling_flag = mov_scheduling_flag
         
         

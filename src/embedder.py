@@ -16,10 +16,15 @@ from my_instruction import MyInstruction
 class Embedder:
     __b_passwd = None
     
+    
     @staticmethod
     def get_secret_data(secret_message: str) -> tuple:
-        # parameter znaci zadany secret mess, vracia sa v bajtoch obsah suboru
-        # a file extension.. alebo len string v bajtoch ak nebol zadany subor
+        # Parse given secret message. If file path was given, content of
+        # it is going to be converted to bytes and embedded, and file
+        # extension is parsed and converted as well. If only string was
+        # given it's coverted to bytes as well, and file extension txt
+        # will be embedded.
+        
         if os.path.isfile(secret_message):
             # The whole file is going to be embedded.
             b_fext = common.get_file_extension(secret_message)
@@ -28,7 +33,7 @@ class Embedder:
                 fd = open(secret_message, "rb")
             except IOError:
                 print("ERROR! Can not access file of embedding data: {args.secret_message}", file=sys.stderr)
-                sys.exit(101)
+                sys.exit(104)
             
             b_secret_data = fd.read()
             fd.close()
@@ -51,7 +56,7 @@ class Embedder:
             b_comp1 = lzc.compress(content)
         except lzma.LZMAError:
             print("ERROR! While preprocessing secret message an error occured.", file=sys.stderr)
-            sys.exit(101)
+            sys.exit(104)
         
         b_comp2 = lzc.flush()
         
@@ -60,6 +65,7 @@ class Embedder:
     
     @classmethod
     def encrypt_data(cls, data: bytes) -> bytes:
+        # Encrypt given data in bytes with given password.
         b_key, cls.__b_passwd = common.gen_key_from_passwd()
         cipher = Fernet(b_key)
         b_encrypted = cipher.encrypt(data)
@@ -69,7 +75,8 @@ class Embedder:
     
     @classmethod
     def xor_data_len(cls, encrypted: bytes) -> bytes:
-        # vracia 32B XORovanu dlzku spravy
+        # Function returns XORed length of embedding data.
+
         # Must be in bytes, because password is in the bytes as well.
         b_encrypted_len = len(encrypted).to_bytes(common.SIZE_OF_DATA_LEN, byteorder="little")
         
@@ -82,8 +89,12 @@ class Embedder:
         else:
             b_passwd = cls.__b_passwd[:common.SIZE_OF_DATA_LEN]
 
-        # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
-        # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
+        # Data length bytes are going to be XORed with password of same
+        # size. If given password is longer, it's truncated. This is
+        # security reason as if whole password bytes were XORed with null
+        # padding of data length bytes, password characters would map to
+        # the XORed data length and could be readable. Reversed cycle is
+        # used to avoid problem when null byte is in the middle of data.
         null_padding = 0
         
         for b in reversed(b_encrypted_len):
@@ -94,6 +105,7 @@ class Embedder:
         i = common.SIZE_OF_DATA_LEN - null_padding
         
         b_xored_len = bytes([a ^ b for a, b in zip(b_encrypted_len, b_passwd[:i])])
+        
         print(f"...{b_xored_len}")
         
         # Add null bytes after XOR.
@@ -117,9 +129,13 @@ class Embedder:
             else:
                 b_passwd = cls.__b_passwd[:common.SIZE_OF_FEXT]
             
-            # vezmem heslo len take dlhe ako je data_len, vyXORujem a predlzim o nuly vysledok.
-            # zistujem aky dlhy je padding null bytes, odzadu aby nedoslo k chybe ak by bol null byte v strede niecoho..
-            
+            # File extension bytes are going to be XORed with password
+            # of same size. If given password is longer, it's truncated.
+            # This is security reason as if whole password bytes were
+            # XORed with null padding of data length bytes, password
+            # characters would map to the XORed data length and could be
+            # readable. Reversed cycle is used to avoid problem when
+            # null byte is in the middle of data.
             null_padding = 0
             
             for b in reversed(fext):
@@ -146,27 +162,36 @@ class Embedder:
     
     @staticmethod
     def check_cap(mess_len: int, analyzer: Analyzer) -> None:
-        
-        cap_indicator = ""
-        if mess_len > (analyzer.min_capacity / 8) and \
-            mess_len < (analyzer.max_capacity / 8):
-            cap_indicator = "probably"
-        elif mess_len > (analyzer.max_capacity / 8):
-            cap_indicator = "definitely"
-            
-        # If needed to ask user.
-        if cap_indicator:
-            
-            if cap_indicator == "probably":
-                answer = input("Capacity of the cover file is probably not sufficient (the embedding data can be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
-            elif cap_indicator == "definitely":
-                answer = input("Capacity of the cover file is definitely not sufficient (the embedding data will be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
 
-            if answer != "yes" and \
-                answer != "ye" and \
-                answer != "y":
-                print("Steganography was not applied!")
-                sys.exit(0)
+        if mess_len > (analyzer.min_capacity / 8):
+            print(f"ERROR! Capacity of cover-file is not sufficient and data can not be embedded!", file=sys.stderr)
+            sys.exit(104)
+            
+        # Previously implemented. Program informed if capacity was not
+        # sufficient and asked user for next step. It was removed and
+        # this functionality was changed as incomplete data can not be
+        # decrypted, so extrator always failed.
+
+        # cap_indicator = ""
+        # if mess_len > (analyzer.min_capacity / 8) and \
+        #     mess_len < (analyzer.max_capacity / 8):
+        #     cap_indicator = "probably"
+        # elif mess_len > (analyzer.max_capacity / 8):
+        #     cap_indicator = "definitely"
+        
+        # # If needed to ask user.
+        # if cap_indicator:
+            
+        #     if cap_indicator == "probably":
+        #         answer = input("Capacity of the cover file is probably not sufficient (the embedding data can be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
+        #     elif cap_indicator == "definitely":
+        #         answer = input("Capacity of the cover file is definitely not sufficient (the embedding data will be truncated).\nDo you want to continue anyway? [y/n] ").lower().strip()
+
+        #     if answer != "yes" and \
+        #         answer != "ye" and \
+        #         answer != "y":
+        #         print("Steganography was not applied!")
+        #         sys.exit(0)
                 
                 
     @staticmethod
@@ -218,7 +243,7 @@ class Embedder:
                     
         ####################################### PREC
         print("TOTO POJDE PREC -- KONTROLA NECHCENEJ CHYBY")
-        sys.exit(101)
+        sys.exit(100000)
             
             
     @staticmethod
@@ -270,7 +295,7 @@ class Embedder:
             common.lexicographic_mov_sort(mov1):
             # Setting first MOV to None is signing tak they can not be
             # scheduled. It happens extremely rare.
-            print(".................SAME")
+            print(".................CAN NOT BE SCHEDULED")
             instr_mov0 = None
             return False
         
@@ -480,7 +505,9 @@ class Embedder:
     def __get_imm_idx(instr_fromf: bytes, imm: int, op_size: int) -> int:
         # Get index position of immediate operand inside instruction.
         b_imm = imm.to_bytes(op_size, byteorder="little", signed=True)
+        
         print(f"b_imm: {b_imm.hex()}")
+        
         return instr_fromf.find(b_imm)
 
     
@@ -488,8 +515,7 @@ class Embedder:
     def embed(cls,
               fexe: str,
               mess: bytes,
-              potential_my_instrs: list,
-              bitness: int) -> None:
+              potential_my_instrs: list) -> None:
 
         ### moze byt MOV1 a MOV2 (ked je MOV schedule) ako:
         ## eq_classes schedule, schedule
@@ -505,23 +531,19 @@ class Embedder:
         
         bits_mess = bitarray(endian="little")
         bits_mess.frombytes(mess)
-        print(f"{bits_mess}")
-        print(f"")
         
         try:
             fd = open(fexe, "r+b")
         except IOError:
             print(f"ERROR! Can not open cover file for embedding: {fexe}",
                   file=sys.stderr)
-            sys.exit(101)
+            sys.exit(104)
         
         for instr_idx, my_instr in enumerate(potential_my_instrs):
-            # print()
             
             if skip:
                 # Skip current NOP instruction.
                 skip -= 1
-                # print("SKIPPING")
                 continue
             
             # For speed performance.
@@ -569,15 +591,19 @@ class Embedder:
                     
                     # Get and find an opcode of instruction.
                     instr_opcode = OpCodeInfo(instr.code).op_code
+                    
                     # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
+                    
                     opcode_idx = common.get_opcode_idx(b_instr_fromf,
                                                        instr_opcode)
                     # print()
                     # print(f"{b_instr_fromf.hex()}, {instr_opcode:x}, {opcode_idx}")
+                    
                     # Find Direction bit to embed according to the
                     # encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
                     new_dir_bit = eq_class.members[idx]
+                    
                     # print(f"{new_dir_bit}")
                     # print(f"{new_dir_bit}, {opcode_idx}, {instr_opcode:x}, {idx}")
                     
@@ -588,7 +614,9 @@ class Embedder:
                     
                         # Direction bit is going to be changed.
                         rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
+                        
                         # print(f"rex: {rex_idx}")
+                        
                         # Exchange Reg/Opcode and rm field of ModR/M byte.
                         cls.__swap_rm_r_operands(rex_idx,
                                                 opcode_idx,
@@ -597,7 +625,9 @@ class Embedder:
                         # Rewrite Direction bit inside opcode of instruction.
                         bits_instr[dir_bit_offset:dir_bit_offset + 1] = \
                             new_dir_bit
+                        
                         # print(f"{bits_instr}")
+                        
                         # Embed to the executable.
                         fd.seek(my_instr.foffset)
                         fd.write(bits_instr)
@@ -611,9 +641,8 @@ class Embedder:
                     # # if my_instr.foffset == 0x23e1b:
                     # #     sys.exit()
                 
-                # Class does not encodes class members, as it does not
-                # have any. Encoding is lexicographic order of used
-                # registers name.
+                # Encoding is lexicographic order of used registers name
+                # and it's determined by configuration file.
                 if eq_class.class_name == "Swap base-index registers 32-bit":
                     # Instruction form changes (SIB.base <=> SIB.index),
                     # therefore, also, operands must be changed. If REX
@@ -625,10 +654,12 @@ class Embedder:
                     # Find out desired order for base-index according to
                     # the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
-                    print()
-                    print(f"{instr}, {my_instr.foffset:x}")
-                    fd.seek(my_instr.foffset)
-                    print(f"..{fd.read(len(instr)).hex()}")
+                    
+                    # print()
+                    # print(f"{instr}, {my_instr.foffset:x}")
+                    # fd.seek(my_instr.foffset)
+                    # print(f"..{fd.read(len(instr)).hex()}")
+                    
                     # Decide if base and index registers should be
                     # swapped according to the next secret message bits
                     # or if they are in the right order.
@@ -638,20 +669,25 @@ class Embedder:
                         # modify it.
                         fd.seek(my_instr.foffset)
                         b_instr_fromf = fd.read(len(instr))
-                        print(f"{b_instr_fromf.hex()}")
+                        
+                        # print(f"{b_instr_fromf.hex()}")
+                       
                         # Convert read instruction from bytes to bits.
                         bits_instr = bitarray()
                         bits_instr.frombytes(b_instr_fromf)
                         
                         # Get and find an opcode of instruction.
                         instr_opcode = OpCodeInfo(instr.code).op_code
+                        
                         # instr_opcode_len = OpCodeInfo(instr.code).op_code_len
+                        
                         opcode_idx = common.get_opcode_idx(b_instr_fromf,
                                                            instr_opcode)
                         
                         rex_idx = cls.__get_rex_idx(b_instr_fromf, opcode_idx)
-                        print(f"REX: {rex_idx}")
-                        print(f"{bits_instr}")
+                        
+                        # print(f"REX: {rex_idx}")
+                        # print(f"{bits_instr}")
                         
                         # Swap registers. If swap is not successful,
                         # nothing is embeddded and instr. is skipped.
@@ -667,13 +703,12 @@ class Embedder:
                         # Delete already embedded bit from list.
                         del bits_mess[:len(eq_class.encoded_idxs[idx])]
                     
-                    fd.seek(my_instr.foffset)
-                    print(f"..{fd.read(len(instr)).hex()}")
+                    # fd.seek(my_instr.foffset)
+                    # print(f"..{fd.read(len(instr)).hex()}")
                     # sys.exit()
                     
-                # Class does not encodes class members, as it does not
-                # have any. Encoding is lexicographic order of used
-                # instructions strings.
+                # Encoding is lexicographic order of used instructions
+                # strings and it's determined by configuration file.
                 if eq_class.class_name == "MOV Scheduling" or \
                     my_instr.mov_scheduling_flag:
                     
@@ -724,6 +759,7 @@ class Embedder:
                         fd.seek(potential_my_instrs[instr_idx -1].foffset)
                         b_mov0_fromf = \
                             fd.read(len(potential_my_instrs[instr_idx -1].instruction))
+                        
                         # Read instruction bytes of 2nd MOV.
                         fd.seek(my_instr.foffset)
                         b_mov1_fromf = fd.read(len(instr))
@@ -731,6 +767,7 @@ class Embedder:
                         # Swap them.
                         fd.seek(potential_my_instrs[instr_idx - 1].foffset)
                         fd.write(b_mov1_fromf)
+                        
                         fd.seek(potential_my_instrs[instr_idx - 1].foffset + len(b_mov1_fromf))
                         fd.write(b_mov0_fromf)
                     
@@ -747,13 +784,18 @@ class Embedder:
                 # exactly same principle.
                 elif eq_class.class_name == "2 Bytes Long NOP" or \
                     eq_class.class_name == "3 Bytes Long NOP":
-                        
+
                     # Set skip flag for next instructions skipping.
                     skip = common.set_skip_flag(my_instr,
                                                 potential_my_instrs[instr_idx + 1])
 
                     # Find bits to embed according to the encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
+                    
+                    # fd.seek(my_instr.foffset)
+                    # print()
+                    # print(f"{my_instr.foffset:x}, {my_instr.instruction}, {fd.read(len(instr)).hex()}, {skip} - {eq_class.class_name}")
+                    # print(f"{eq_class.members[idx][2:]}, {bytes.fromhex(eq_class.members[idx][2:])}") 
                     
                     # Embed to the executable.
                     fd.seek(my_instr.foffset)
@@ -762,26 +804,42 @@ class Embedder:
                     # Delete already embedded bits from list.
                     del bits_mess[:len(eq_class.encoded_idxs[idx])]
                 
+                    # fd.seek(my_instr.foffset)
+                    # print(f"{fd.read(len(instr)).hex()}")
+                
                 # Class does not encodes class members, as it does not
                 # have any. In this case, bits from message are simply
                 # embedded to the last useable instruction bytes.
                 elif eq_class.class_name == ">3 Bytes Long NOP":
-
+                    
                     # Get number of bits available for embedding.
-                    bits_cnt = common.count_useable_bits_from_nop(instr, bitness)
+                    fd.seek(my_instr.foffset)
+                    bits_cnt = \
+                        common.count_useable_bits_from_nop(instr,
+                                                           fd.read(len(instr)))
                     # Take bits needed to embed.
                     bits_to_embed = bits_mess[:bits_cnt]
 
                     # There is 100% chance that it will be multiple of 8.
                     b_cnt = bits_cnt // 8
                     
+                    # fd.seek(my_instr.foffset)
+                    # print()
+                    # print(f"{my_instr.foffset:x}, {my_instr.instruction}, {fd.read(len(instr)).hex()}")
+                    # print(f"{bits_cnt}, {b_cnt}, {bits_to_embed}, {bits_to_embed.tobytes().hex()}")
+                    
                     # Embed to the executable.
                     pos = my_instr.foffset + (len(instr) - b_cnt)
                     fd.seek(pos)
                     fd.write(bits_to_embed)
+                   
+                    # print(f"pos: {pos:x}")
                     
                     # Delete already embedded bits from list.
                     del bits_mess[:len(bits_to_embed)]
+                    
+                    # fd.seek(my_instr.foffset)
+                    # print(f"{fd.read(len(instr)).hex()}")
                 
                 # These two classes can be merged as they modify only
                 # Reg/Opcode field inside ModR/M byte.
@@ -866,6 +924,7 @@ class Embedder:
                     # modify it.
                     fd.seek(my_instr.foffset)
                     b_instr_fromf = fd.read(len(instr))
+                    
                     # print(f"{b_instr_fromf.hex()}")
                     # print(f"{instr}")
                     
@@ -877,6 +936,7 @@ class Embedder:
                     # Find Reg/Opcode bits to embed according to the
                     # encoding.
                     idx = cls.__find_encoded_idx(eq_class, bits_mess)
+                    
                     # print(f"{eq_class.encoded_idxs[idx]}")
                     # print(f"{OpCodeInfo(instr.code).operand_size}")
                     
@@ -1000,19 +1060,12 @@ class Embedder:
                 print()
                 print()
                 
-            ###################################### OK ???
-            # print(f"{bits_mess}")
-            # print()
             if not len(bits_mess):
                 # All bits were embedded (whole message).
                 print(f"KONEC")
                 break
             
         fd.close()
-        
-        
-        
-        
         # print(f"op_code: {OpCodeInfo(my_instr.instruction.code).op_code:x}")
                 # print(f"op_code_len {OpCodeInfo(my_instr.instruction.code).op_code_len}")
                 # print()

@@ -11,6 +11,8 @@ class ArgsParser():
         
     @classmethod
     def __set_parser(cls) -> None:
+        # Function only set command-line argument parser by creating
+        # types of possible required, positional and optional arguments.
         
         cls.__parser = argparse.ArgumentParser(
             usage="""
@@ -133,6 +135,9 @@ arguments)""",
         
     @classmethod
     def __eprint(cls, msg: str, ec: int) -> None:
+        # Error print for this module. Its format is respected by used
+        # argsparse module.
+        
         p = cls.__parser
         print("usage:", file=sys.stderr)
         print(
@@ -147,14 +152,16 @@ arguments)""",
         
     @classmethod
     def __check_file(cls, f: str) -> None:
+        # Check if file exists in current file system.
         if not os.path.isfile(f):           
             cls.__eprint(f"the following value is not a file: {f}", 100)
         
         
     @classmethod
     def __parse_secret_message(cls) -> None:
-        # ak je secret_message stdin, zacnem citat vstup
-        # vystup do ./extracted/output.txt; pripona sa neuklada, ulozi sa ako same jednicky -- nuly budu ziadna pripona - binarka
+        # Parse required data given for embedding.
+        
+        # Data are expected on stdin.
         if cls.__args.secret_message == sys.stdin:
             # Read given input from 'stdin'.
             print("Please, enter the data you want to embed:")
@@ -162,21 +169,20 @@ arguments)""",
             # In case that empty input was given, program correctly ends.
             if cls.__args.secret_message == "":
                 sys.exit(0)
-        # ak je zadane -s, check ci je to platna cesta
-        # ak ano, skryvat sa bude binarny obsah suboru (teda cely subor)
-        # citam subor binarne, po bajtoch, vystup bude subor (uklada sa pripona)
+
         # The whole file is going to be embedded.
         elif os.path.isfile(cls.__args.secret_message):
             cls.__args.secret_message = os.path.abspath(cls.__args.secret_message)
-        # ak je zadane -s a nie je to platna cesta
-        # ide len o random string, citam po bajtoch, extrahuje sa do ./extracted/output.txt
-        # Embedded will be just string.
+
+        # Embedded string can not be empty. It does not make any sense.
         elif cls.__args.secret_message == "":
             sys.exit(0)
             
             
     @classmethod
     def __parse_method(cls, method: str) -> None:
+        # Parse given method. It only exchange their long versions for
+        # short to better manipulate with them in the rest of program.
         if method == "instruction-substitution":
             cls.__args.method = "sub"
         elif method == "extended-substitution":
@@ -189,8 +195,9 @@ arguments)""",
             
     @classmethod
     def __set_config_file(cls) -> None:
-        # ak bude script spustany z inej zlozky ako src ci parent, bude
-        # musiet byt zadany config file ze argument, inak chyba.
+        # Configuration file must be given by argument if this python
+        # program is run from other than parent and current folder.
+        # Default path to the configuration file is set as well.
         
         # Configuration file was given by argument.
         if cls.__args.config_file is not None:
@@ -199,13 +206,16 @@ arguments)""",
         # Configuration file was not given. Taking default one.
         else:
             # main.py script was invoked from ../src folder.
-            if os.path.isdir("./config"):    
+            if os.path.isdir("./config"):
                 cls.__args.config_file = os.path.abspath("./config/eq-classes.json")
                 cls.__check_file(cls.__args.config_file)
             # main.py script was invoked from ./src folder.
-            else:
+            elif os.path.isdir("../config"):
                 cls.__args.config_file = os.path.abspath("../config/eq-classes.json")
                 cls.__check_file(cls.__args.config_file)
+            else:
+                print(f"Please, provide configuration file for correct run or run this script from parent folder of src scripts or from src folder directly.")
+                sys.exit(0)
                 
 
     @classmethod
@@ -277,7 +287,8 @@ arguments)""",
             
 
     @classmethod
-    def parse(cls) -> object:        
+    def parse(cls) -> object:
+        # Run argument parser.
         cls.__set_parser()
         cls.__check_args()
         
