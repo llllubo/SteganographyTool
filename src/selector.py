@@ -242,7 +242,7 @@ class Selector:
         # In case when they are not equal in bits, because of they
         # differ only in Direction Bit as MOV can -- in that case they
         # actually are equal and can not be ordered lexicographically.
-        elif f"{prev_mov:ixr}" == f"{curr_mov:ixr}":
+        elif f"{prev_mov:ix}" == f"{curr_mov:ix}":
             return False
         
         # If some mov write to the REG, this REG can not be used anymore
@@ -335,8 +335,7 @@ class Selector:
             op_code = my_instr.instruction.op_code()
 
 
-            if method == "mov" or \
-                method == "ext-sub-nops-mov":
+            if method == "mov":
                 
                 # Two MOVs in a row.
                 if instr.mnemonic == Mnemonic.MOV:
@@ -391,7 +390,7 @@ class Selector:
 
 
             if method == "nops" or \
-                method == "ext-sub-nops-mov":
+                method == "ext-sub-nops":
                 
                 # 1 byte NOPs 0x90.
                 if op_code.is_nop and instr.len == 1:
@@ -607,7 +606,7 @@ class Selector:
                         
                         
             if method == "ext-sub" or \
-                method == "ext-sub-nops-mov":
+                method == "ext-sub-nops":
                 
                 # TEST non-acc-(except AH)-reg, imm
                 # TEST /0 /1
@@ -632,7 +631,7 @@ class Selector:
                 # This class has higher priority over class 'SHL/SAL'
                 # and, in mode 'ext-sub-nops', also over classes
                 # 'ADD negated' and 'SUB negated'. It's set like that,
-                # because of good stealthness of this redundancy.
+                # because of good stealthiness of this redundancy.
                 elif analyzer.bitness == 32 and \
                 ( (   # OPCODE Memory, Register.
                     re.match(
@@ -728,7 +727,7 @@ class Selector:
                 
             if method == "sub" or \
                 method == "ext-sub" or \
-                method == "ext-sub-nops-mov":
+                method == "ext-sub-nops":
                 ## WARNING: When there is 'imm' in instruction string
                 ## and the first operand is any register, this register
                 ## can be directly specified - therefore there is

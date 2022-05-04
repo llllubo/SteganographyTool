@@ -9,7 +9,7 @@ Project: Bachelor's thesis, BUT FIT Brno
 """ 
  
 
-from statistics import mode
+import itertools
 import sys
 import time
 from iced_x86 import *
@@ -86,18 +86,19 @@ class Main:
         #     if id(a) == id(b):
         #         print(f"kurva..a.. {a.ioffset}, {a.eq_class}, {a.mov_scheduling_flag}")
         #         print(f"kurva..b.. {b.ioffset}, {b.eq_class}, {b.mov_scheduling_flag}")
-    
-        # ###### KONTROLNY VYPIS
+        # return
+        ###### KONTROLNY VYPIS
         # tmp = 0
         # for my_instr in potential_my_instrs:
 
         #     got_op_code = my_instr.instruction.op_code()
         #     tmp += len(my_instr.instruction)
         #     # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {my_instr.instruction.len:2}", end=" | ")
-        #     print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {my_instr.instruction.len:2}   {got_op_code.instruction_string:<16}", end=" | ")
+        #     print(f"{my_instr.instruction}")
+        #     # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {my_instr.instruction.len:2}   {got_op_code.instruction_string:<16}", end=" | ")
         #     # print(f"{my_instr.eq_class.class_name} | {my_instr.instruction}")
-        #     print(f"{my_instr.eq_class.class_name}")
-        #     print()
+        #     # print(f"{my_instr.eq_class.class_name}")
+        #     # print()
         #     if my_instr.instruction.encoding != EncodingKind.LEGACY:
         #         print()
         #         print()
@@ -120,7 +121,7 @@ class Main:
                 sys.stdout.flush()
             
             # Encode indexes of each class members. They will be used
-            # while embedding/extracting/resetting.
+            # while embedding/extracting.
             EqClassesProcessor.encode_members_indexes()
             
             # Parse equivalent class members if needed (this is not
@@ -162,7 +163,7 @@ class Main:
             b_message = b_xored_len + b_xored_fext + b_encrypted
             
             # b_message = len(b_secret_data).to_bytes(SIZE_OF_DATA_LEN, byteorder="little") + b_fext + b_secret_data
-            # print(f"{b_message}")
+            
             # print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
             # print(f"MAX CAPACITY: {analyzer.max_capacity / 8} bytes")
             # print(f"len(b_message): {len(b_message)} bytes")
@@ -180,7 +181,7 @@ class Main:
             Embedder.embed(inputf,
                            b_message,
                            potential_my_instrs,
-                           analyzer.bitness)
+                           args.verbose)
             
         elif args.mode == "x" or args.mode == "extract":
             
@@ -190,7 +191,8 @@ class Main:
             
             # Extract all data.
             bits_extracted = Extractor.extract(inputf,
-                                               potential_my_instrs)
+                                               potential_my_instrs,
+                                               args.verbose)
             
             # print(f"main - extracted_len: {len(bits_extracted) / 8}")
             # print(f"{bits_extracted.tobytes()}")
@@ -232,12 +234,6 @@ class Main:
                 sys.stdout.flush()
             
             Extractor.make_output(b_decomp, b_unxored_fext)
-        
-        elif args.mode == "r" or args.mode == "reset":
-            
-            # prechod cez list referencii na instrukcie
-            # vkladat budem asi len nuly -- najcastejsie sa vyskytujuce tvary z kazdej classy, vynulujem space v NOPs.
-            pass
         
         # Only analysis is printed.
         else:

@@ -1,3 +1,4 @@
+from multiprocessing import connection
 import os
 import re
 import sys
@@ -34,19 +35,19 @@ class Extractor:
         
         
     @staticmethod
-    def __get_order_type(instr: MyInstruction, prev_mov: MyInstruction) -> str:
+    def __get_order_type(instr: MyInstruction, next_mov: MyInstruction) -> str:
         # Determine occuring order. It's designed for classes
-        # 'MOV Scheduling' and 'Swap base-index registers 32-bit' as only these
-        # use scheduling.
+        # 'MOV Scheduling' and 'Swap base-index registers 32-bit' as
+        # only these use scheduling.
         # Only in case of class 'MOV Scheduling' is 2nd parameter given,
         # otherwise it's set to None. This parameter is 1st occured MOV.
         
-        if prev_mov is not None:
+        if next_mov is not None:
             if instr.eq_class.class_name == "MOV Scheduling" or \
-                prev_mov.eq_class.class_name == "MOV Scheduling" or \
-                instr.mov_scheduling_flag or prev_mov.mov_scheduling_flag:
-                mov0 = f"{prev_mov.instruction}"
-                mov1 = f"{instr.instruction}"
+                next_mov.eq_class.class_name == "MOV Scheduling" or \
+                instr.mov_scheduling_flag or next_mov.mov_scheduling_flag:
+                mov0 = f"{instr.instruction}"
+                mov1 = f"{next_mov.instruction}"
                 
                 if common.lexicographic_mov_sort(mov0) < \
                     common.lexicographic_mov_sort(mov1):
@@ -61,7 +62,7 @@ class Extractor:
                 return "Descending"
             
         print(f"{instr.eq_class.class_name}, {instr.instruction}")
-        print(f"{prev_mov.eq_class.class_name}, {prev_mov.instruction}")
+        print(f"{next_mov.eq_class.class_name}, {next_mov.instruction}")
     
     
     @staticmethod
@@ -88,10 +89,12 @@ class Extractor:
                 return eq_class.encoded_idxs[idx]
         print(f"POZOOOOOOOOOOOR")###########################
     
+    
     @classmethod
     def extract(cls,
                 fexe: str,
-                potential_my_instrs: list) -> bitarray:
+                potential_my_instrs: list,
+                verbose: bool) -> bitarray:
         
         try:
             fd = open(fexe, "rb")
@@ -121,10 +124,15 @@ class Extractor:
         # Skip flag defines how many next instructions should be
         # skipped as they were already used by first instruction
         # from their group (3 and 2 Bytes Long NOP classes).
-        skip = 0
+        skip = 0        
         
-        # Skip flag determines first occurence of scheduling MOV if True.
-        skip_mov = False
+        # # Skip flag determines first occurence of scheduling MOV if True.
+        # skip_mov = False
+        
+        # # Determines if MOVs were already scheduled. It's False at the
+        # # beginning, but first MOV set it to True after they are
+        # # scheduled.
+        # movs_scheduled = False
             
         for instr_idx, my_instr in enumerate(potential_my_instrs):
             
@@ -148,6 +156,66 @@ class Extractor:
                 # fd.seek(my_instr.foffset)
                 # print(f"{eq_class.class_name} | {my_instr.instruction} | {op_code.instruction_string} | {my_instr.foffset:x} | {fd.read(len(my_instr.instruction)).hex()}")
                 
+                # # Encoding is lexicographic order of used instructions
+                # # strings and it's determined by configuration file.
+                # if eq_class.class_name == "MOV Scheduling" or \
+                #     my_instr.mov_scheduling_flag and not movs_scheduled:
+                    
+                #     # # Skip is set if first MOV scheduling instruction
+                #     # # occurs.
+                #     # if not skip_mov:
+                #     #     skip_mov = True
+                #     # else:
+                #     #     skip_mov = False
+
+                #     ############# LEN VYPIS
+                #     # if my_instr.mov_scheduling_flag:
+                #     #     print(f"f: {instr}, {eq_class.class_name}")
+                #     # else:
+                #     #     print(f"{instr}, {eq_class.class_name}")
+                #     # print(f"{my_instr.foffset:x}, {len(instr)}")
+                    
+                #     # mov0 = f"{my_instr.instruction}"
+                #     # mov1 = f"{potential_my_instrs[instr_idx + 1].instruction}"
+                #     # if cls.__lexicographic_mov_sort(mov0) == \
+                #     #     cls.__lexicographic_mov_sort(mov1) and \
+                #     #         skip_mov:
+                #     #     print(".................SAME")
+                    
+                #     # if not skip_mov:
+                #     #     # Second scheduled MOV is current.
+                #     #     print()
+                #     #############
+
+                #     # # First MOV is skipped for now.
+                #     # if skip_mov:
+                #     #     continue
+
+                #     # ## Second MOV is current, scheduling can be decoded.
+
+
+                #     # Set flag with first MOV - This is only tag for
+                #     # knowledge that first MOV was tried to be scheduled.
+                #     movs_scheduled = True
+
+                #     # Get type of order in which are both MOVs present.
+                #     order = cls.__get_order_type(my_instr,
+                #                                  potential_my_instrs[instr_idx +1])
+                #     print(f"order: {order}, {my_instr.instruction}, {potential_my_instrs[instr_idx + 1].instruction}")
+                #     # Decode found out order. Here can occur situation
+                #     # when both MOVs will have set only
+                #     # 'mov_scheduling_flag'. Therefore can not be used
+                #     # '__decode()' function here and special one was
+                #     # created.
+                #     extracted_bits = cls.__decode_mov(order)
+                #     print(f"extracted_bits: {extracted_bits}")
+                #     # Collect decoded bits and create message.
+                #     bits_mess.extend(extracted_bits)
+                #     print()
+                # else:
+                #     # Unset flag with second MOV.
+                #     movs_scheduled = False
+                
                 if re.match(r"^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
                           eq_class.class_name) or \
                     re.match(r"^(?:ADD|SUB|AND|OR|XOR|CMP|ADC|SBB) 32-bit$",
@@ -156,7 +224,7 @@ class Extractor:
                     # inside OPCODE.
                     # MOV instruction from this class can also be
                     # scheduled - NOT IMPLEMENTED.
-
+                    
                     # Read instruction bytes from file to be able to
                     # analyze it.
                     fd.seek(my_instr.foffset)
@@ -207,63 +275,12 @@ class Extractor:
 
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
-                    
-                # Encoding is lexicographic order of used instructions
-                # strings and it's determined by configuration file.
-                if eq_class.class_name == "MOV Scheduling" or \
-                    my_instr.mov_scheduling_flag:
-                    
-                    # Skip is set if first MOV scheduling instruction
-                    # occurs.
-                    if not skip_mov:
-                        skip_mov = True
-                    else:
-                        skip_mov = False
-
-                    ############# LEN VYPIS
-                    # if my_instr.mov_scheduling_flag:
-                    #     print(f"f: {instr}, {eq_class.class_name}")
-                    # else:
-                    #     print(f"{instr}, {eq_class.class_name}")
-                    # print(f"{my_instr.foffset:x}, {len(instr)}")
-                    
-                    # mov0 = f"{my_instr.instruction}"
-                    # mov1 = f"{potential_my_instrs[instr_idx + 1].instruction}"
-                    # if cls.__lexicographic_mov_sort(mov0) == \
-                    #     cls.__lexicographic_mov_sort(mov1) and \
-                    #         skip_mov:
-                    #     print(".................SAME")
-                    
-                    # if not skip_mov:
-                    #     # Second scheduled MOV is current.
-                    #     print()
-                    #############
-
-                    # First MOV is skipped for now.
-                    if skip_mov:
-                        continue
-
-                    ## Second MOV is current, scheduling can be decoded.
-
-                    # Get type of order in which are both MOVs present.
-                    order = cls.__get_order_type(my_instr,
-                                                 potential_my_instrs[instr_idx -1])
-
-                    # Decode found out order. Here can occur situation
-                    # when both MOVs will have set only
-                    # 'mov_scheduling_flag'. Therefore can not be used
-                    # '__decode()' function here and special one was
-                    # created.
-                    extracted_bits = cls.__decode_mov(order)
-                    
-                    # Collect decoded bits and create message.
-                    bits_mess.extend(extracted_bits)
                 
                 # Classes can be together as their usage is based on
                 # exactly same principle.
                 elif eq_class.class_name == "2 Bytes Long NOP" or \
                     eq_class.class_name == "3 Bytes Long NOP":
-                        
+
                     # Set skip flag for next instructions skipping.
                     skip = common.set_skip_flag(my_instr,
                                                 potential_my_instrs[instr_idx + 1])
@@ -294,7 +311,7 @@ class Extractor:
                 # have any. In this case, bits from message are simply
                 # embedded to the last useable instruction bytes.
                 elif eq_class.class_name == ">3 Bytes Long NOP":
-                    
+
                     # Get number of last instruction bits which contain
                     # message bits.
                     fd.seek(my_instr.foffset)
@@ -416,7 +433,7 @@ class Extractor:
                     b_xored_len = bits_mess[:extract_limit].tobytes()
                     print(f"{extract_limit}, {len(bits_mess)}, {b_xored_len}")
                     # UnXOR extracted length of data with password.
-                    data_len = cls.unxor_data_len(b_xored_len)
+                    data_len = cls.__unxor_data_len(b_xored_len)
                     print()
                     print()
                     print(f"extracted (encrypted) data len: {data_len:,}")
@@ -431,7 +448,8 @@ class Extractor:
                     data_extraction_flag = True
                 else:
                     # Full requested message was extracted.
-                    print(f"VSETKO BOLO EXTRAHOVANE")
+                    if verbose:
+                        print("All required data was extracted.")
                     break
     
         fd.close()
@@ -450,7 +468,7 @@ class Extractor:
         
     
     @classmethod
-    def unxor_data_len(cls, xored_len: bytes) -> int:
+    def __unxor_data_len(cls, xored_len: bytes) -> int:
         # Function returns XORed data length as integer and also it
         # requires password from user.
 

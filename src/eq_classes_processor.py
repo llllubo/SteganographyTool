@@ -124,7 +124,7 @@ class EqClassesProcessor:
                 (
                     method == "Extended Instruction Substitution" and \
                     method_name == "Basic Instruction Substitution"
-                ) or method == "ext-sub-nops-mov":
+                ) or method == "ext-sub-nops":
                 
                 for eq_class_name in obj_eq_classes:
                     

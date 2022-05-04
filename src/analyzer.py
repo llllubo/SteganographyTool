@@ -85,8 +85,8 @@ class Analyzer:
         elif method == "mov":
             method = "MOV Scheduling"
             
-        elif method == "ext-sub-nops-mov":
-            method = "Combination of Extended Substitution with NOPs & MOV Scheduling"
+        elif method == "ext-sub-nops":
+            method = "Combination of Extended Substitution with NOPs Embedding"
         
         print(f"Executable {self.bitness}-bit:\t{fpath}")
         print(f"Steganography method:\t{method}")

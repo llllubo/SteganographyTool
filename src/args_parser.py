@@ -22,9 +22,7 @@ class ArgsParser():
             description="""Steganography for Executables
 
   This program embeds and extracts any type of message to given executable.
-  The program can run in one of four possible modes (embed, extract, analyze
-  and reset) specified by positional argument. Then, neccessary is also choose
-  one of possible steganography methods to embed message. There are instruction
+  The program can run in one of four possible modes (embed, extract, analyze) specified by positional argument. Then, neccessary is also choose one of possible steganography methods to embed message. There are instruction
   substitution and instruction sequence methods. Neither one of them can change
   final size of stego-file. Allowed values of particular arguments are listed
   below.""",
@@ -40,33 +38,30 @@ class ArgsParser():
         cls.__parser.add_argument(
             "mode",
             help="""the mode in which program will run (possible values:
-'e'/'embed', 'x'/'extract', 'a'/'analyze' or 'r'/'reset')
+'e'/'embed', 'x'/'extract' or 'a'/'analyze'')
 
 MODE=embed   - embeds secret message to the cover file
 MODE=extract - extracts secret message from stego-file
 MODE=analyze - analyzes potentional of cover file for
-               given steganography method
-MODE=reset   - resets hidden message from stego-file""",
+               given steganography method""",
             metavar="MODE",
             choices=["e", "embed",
                      "x", "extract",
-                     "a", "analyze",
-                     "r", "reset"]
+                     "a", "analyze"]
             )
         
         requiredArgs = cls.__parser.add_argument_group("required arguments")
         requiredArgs.add_argument(
             "-m",
             "--method",
-            help="""steganography METHOD used to embed/extract/reset message
-or analyze cover file (possible values: 'sub'/
-'instruction-substitution' or 'seq'/'instruction-sequence')""",
+            help="""steganography METHOD used to embed/extract message or
+analyze cover file (possible values:)""",
             metavar="METHOD",
             choices=["sub", "instruction-substitution",
                      "ext-sub", "extended-substitution",
                      "nops", "nops-using",
                      "mov", "mov-scheduling",
-                     "ext-sub-nops-mov"],
+                     "ext-sub-nops"],
             required=True
             )
         
@@ -96,7 +91,7 @@ sequence of bytes)
             "-g",
             "--stego-file",
             help="""executable (STEGO_FILE) with embedded secret message
-to be extracted or reset
+to be extracted
             """
             )
         cls.__parser.add_argument(
@@ -270,15 +265,6 @@ arguments)""",
             else:
                 cls.__eprint(
                     f"cover-file needs to be specified in '{mode}' mode", 100
-                    )
-        
-        elif mode == "r" or mode == "reset":
-            if stego_file is not None:
-                cls.__args.stego_file = os.path.abspath(stego_file)
-                cls.__check_file(cls.__args.stego_file)
-            else:
-                cls.__eprint(
-                    f"stego-file needs to be specified in '{mode}' mode", 100
                     )
         
         # Check configuration file and set default file if not given.

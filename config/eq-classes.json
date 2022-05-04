@@ -1,7 +1,7 @@
 {
     "Scheduling": {
         "MOV Scheduling": {
-            "Description": "Members array here determines what order encodes what bit (their position). Two neighboring MOV instructions that do not influence each other (are independent) and are not exactly same, are lexicographically ordered/scheduled.",
+            "Description": "NOT IMPLEMENTED! Members array here determines what order encodes what bit (their position). Two neighboring MOV instructions that do not influence each other (are independent) and are not exactly same, are lexicographically ordered/scheduled.",
             "Members": [
                 "Ascending",
                 "Descending"
