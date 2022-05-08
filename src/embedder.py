@@ -80,7 +80,7 @@ class Embedder:
         # Must be in bytes, because password is in the bytes as well.
         b_encrypted_len = len(encrypted).to_bytes(common.SIZE_OF_DATA_LEN, byteorder="little")
         
-        print(f"[32B == {len(b_encrypted_len)} -- little] b_encrypted_len: {b_encrypted_len} -> {int.from_bytes(b_encrypted_len, byteorder='little')}")
+        # print(f"[32B == {len(b_encrypted_len)} -- little] b_encrypted_len: {b_encrypted_len} -> {int.from_bytes(b_encrypted_len, byteorder='little')}")
         
         # Prepare password length ONLY for XOR operation.
         if len(cls.__b_passwd) <= common.SIZE_OF_DATA_LEN:
@@ -106,12 +106,12 @@ class Embedder:
         
         b_xored_len = bytes([a ^ b for a, b in zip(b_encrypted_len, b_passwd[:i])])
         
-        print(f"...{b_xored_len}")
+        # print(f"...{b_xored_len}")
         
         # Add null bytes after XOR.
         b_xored_len += bytes(common.SIZE_OF_DATA_LEN - len(b_xored_len))
         
-        print(f"[32B == {len(b_xored_len):,} -- little] b_xored_len: {b_xored_len}")
+        # print(f"[32B == {len(b_xored_len):,} -- little] b_xored_len: {b_xored_len}")
         
         return b_xored_len
     
@@ -146,16 +146,17 @@ class Embedder:
             i = common.SIZE_OF_FEXT - null_padding
             
             b_xored_fext = bytes([a ^ b for a, b in zip(fext, b_passwd[:i])])
-            print(f"...{b_xored_fext}")
+            
+            # print(f"...{b_xored_fext}")
             
             # Add null bytes after XOR.
             b_xored_fext += bytes(common.SIZE_OF_FEXT - len(b_xored_fext))
             
-            print(f"[8B == {len(b_xored_fext):,} -- little] b_xored_fext: {b_xored_fext}")
+            # print(f"[8B == {len(b_xored_fext):,} -- little] b_xored_fext: {b_xored_fext}")
             
             return b_xored_fext
         
-        print(f"[8B == {len(fext):,} -- little] b_xored_fext: {fext}")
+        # print(f"[8B == {len(fext):,} -- little] b_xored_fext: {fext}")
         
         return fext
     
@@ -334,7 +335,7 @@ class Embedder:
         # Find out if base and index memory registers should be swapped
         # according to desired order determined by next encoding bit of
         # message.
-        print(f"!! {instr.eq_class.members[idx]}")
+
         if instr.eq_class.members[idx] == "Ascending" and \
             instr.instruction.memory_base > instr.instruction.memory_index:
             return True
@@ -473,7 +474,7 @@ class Embedder:
     @staticmethod
     def __twos_complement(instr: Instruction, op_size: int) -> bytes:
     
-        print(f"instr.immediate(1):x -- {instr.immediate(1):x}")
+        # print(f"instr.immediate(1):x -- {instr.immediate(1):x}")
     
         # bits_imm = bitarray()
         # bits_imm.frombytes(instr.immediate(1).to_bytes(op_size,
@@ -516,7 +517,7 @@ class Embedder:
         # Get index position of immediate operand inside instruction.
         b_imm = imm.to_bytes(op_size, byteorder="little", signed=True)
         
-        print(f"b_imm: {b_imm.hex()}")
+        # print(f"b_imm: {b_imm.hex()}")
         
         return instr_fromf.find(b_imm)
 

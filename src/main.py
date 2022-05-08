@@ -9,7 +9,6 @@ Project: Bachelor's thesis, BUT FIT Brno
 """ 
  
 
-import itertools
 import sys
 import time
 from iced_x86 import *
@@ -40,6 +39,9 @@ class Main:
 
     @staticmethod
     def run() -> None:
+        
+        # Run timer for case when verbose mode will be used.
+        start = time.time()
         
         args = ArgsParser.parse()
         
@@ -74,7 +76,7 @@ class Main:
             print("Analyzing given executable...")
             sys.stdout.flush()
         
-        # Prepare empty Analyzer to be filled by Selector.
+        # Prepare empty Analyzer to be filled.
         analyzer = Analyzer(bitness, 0, 0, 0.0, 0, 0)
         potential_my_instrs = Selector.select(all_my_instrs,
                                               args.method,
@@ -114,7 +116,7 @@ class Main:
             
             if args.verbose:
                 if args.mode == "x" or args.mode == "extract":
-                    word = "extracting"
+                    word = "extraction"
                 else:
                     word = "embedding"
                 print(f"Preparing for {word}...")
@@ -239,14 +241,14 @@ class Main:
         else:
             analyzer.print_analysis(args.method, inputf)
         
+        
+        if args.verbose:
+            # Print time.
+            print("--- %s seconds ---" % (time.time() - start))
     
 if __name__ == "__main__":
-    
-    start = time.time()
     
     try:
         Main.run()
     except KeyboardInterrupt:
         sys.exit(0)
-    
-    print("\n--- %s seconds ---" % (time.time() - start))

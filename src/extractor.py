@@ -1,4 +1,3 @@
-from multiprocessing import connection
 import os
 import re
 import sys
@@ -425,20 +424,28 @@ class Extractor:
             
             
             if len(bits_mess) >= extract_limit:
-                print(f"PREKROCENY LIMIT")
+                
+                # print(f"PREKROCENY LIMIT")
+                
                 if not data_extraction_flag:
-                    print(f"DLZKA DAT BOLA EXTRAHOVANA")
+                    
+                    # print(f"DLZKA DAT BOLA EXTRAHOVANA")
+                    
                     # If bits defined data length are available, their
                     # length is decoded and set as new extract limit.
                     b_xored_len = bits_mess[:extract_limit].tobytes()
-                    print(f"{extract_limit}, {len(bits_mess)}, {b_xored_len}")
+                    
+                    # print(f"{extract_limit}, {len(bits_mess)}, {b_xored_len}")
+                    
                     # UnXOR extracted length of data with password.
                     data_len = cls.__unxor_data_len(b_xored_len)
-                    print()
-                    print()
-                    print(f"extracted (encrypted) data len: {data_len:,}")
-                    print()
-                    print()
+                    
+                    # print()
+                    # print()
+                    # print(f"extracted (encrypted) data len: {data_len:,}")
+                    # print()
+                    # print()
+                    
                     # Remove bits specifying data length from array.
                     del bits_mess[:extract_limit]
                     # Set new extraction limit (file extension + raw
@@ -458,7 +465,8 @@ class Extractor:
         if len(bits_mess) < extract_limit:
             # Not all requested data could be extracted.
             pass    ######### HANDEL IT - nemalo by nastat
-            print(f"SKONCILA EXTRAKCIA A NEEXTRAHOVALO SA VSETKO - small cap.")
+            
+            # print(f"SKONCILA EXTRAKCIA A NEEXTRAHOVALO SA VSETKO - small cap.")
         
         # Correctness of extracted data. Bits extracted in addition,
         # was extracted with last required bits and must be truncated.
@@ -498,12 +506,13 @@ class Extractor:
         i = common.SIZE_OF_DATA_LEN - null_padding
         
         b_unxored_len = bytes([a ^ b for a, b in zip(xored_len, b_passwd[:i])])
-        print(f"...{b_unxored_len}")
+        
+        # print(f"...{b_unxored_len}")
         
         # Add null bytes after XOR.
         b_unxored_len += bytes(common.SIZE_OF_DATA_LEN - len(b_unxored_len))
         
-        print(f"[32B == {len(b_unxored_len):,} -- little] b_unxored_len: {b_unxored_len}")
+        # print(f"[32B == {len(b_unxored_len):,} -- little] b_unxored_len: {b_unxored_len}")
 
         return int.from_bytes(b_unxored_len, byteorder="little")
     
@@ -542,16 +551,16 @@ class Extractor:
             
             b_unxored_fext = bytes([a ^ b for a, b in zip(xored_fext, b_passwd[:i])])
             
-            print(f"...{b_unxored_fext}")
+            # print(f"...{b_unxored_fext}")
             
             # Add null bytes after XOR.
             b_unxored_fext += bytes(common.SIZE_OF_FEXT - len(b_unxored_fext))
             
-            print(f"[8B == {len(b_unxored_fext):,} -- little] b_unxored_fext: {b_unxored_fext}")
+            # print(f"[8B == {len(b_unxored_fext):,} -- little] b_unxored_fext: {b_unxored_fext}")
             
             return b_unxored_fext
         
-        print(f"[8B == {len(xored_fext):,} -- little] b_unxored_fext: {xored_fext}")
+        # print(f"[8B == {len(xored_fext):,} -- little] b_unxored_fext: {xored_fext}")
         
         return xored_fext
     
@@ -567,7 +576,7 @@ class Extractor:
             print("ERROR! Wrong password for extracting data.", file=sys.stderr)
             sys.exit(105)
         
-        print(f"b_decrypted data len: {len(b_decrypted):,}")
+        # print(f"b_decrypted data len: {len(b_decrypted):,}")
         
         return b_decrypted
     
@@ -583,7 +592,7 @@ class Extractor:
             print("ERROR! While preprocessing extracted data an error occured.", file=sys.stderr)
             sys.exit(105)
         
-        print(f"b_decomp data len: {len(b_decomp):,}")
+        # print(f"b_decomp data len: {len(b_decomp):,}")
         
         return b_decomp
     

@@ -31,4 +31,12 @@ kompresia pouzita xz algo LZMA lebo ma vysoku kompresnu silu, je stredne rychla 
 
 ### ERROR CODES:
 2 error from argparse internal parsing
-100 error caused wrong set of options
+100 error caused wrong set of options - args_parser.py
+101 - disassembler error
+102 - selector error
+103 - eq_classes_processor
+104 - embedder error
+105 - extractor error
+109 - common error
+
+OPRAVIT V PROGRAME - verbose vypnut pri analyze mode, pri verbose vypisat cas behu programu? zmenit desatinne nuly pri vypise analyze na max 3, nie min.. nechcem mat .500, mozno dodat do analyzy sucet vsetkych bajtov kodovych sekcii? aby som zistal data rate.

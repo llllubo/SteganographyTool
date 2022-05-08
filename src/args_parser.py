@@ -22,7 +22,9 @@ class ArgsParser():
             description="""Steganography for Executables
 
   This program embeds and extracts any type of message to given executable.
-  The program can run in one of four possible modes (embed, extract, analyze) specified by positional argument. Then, neccessary is also choose one of possible steganography methods to embed message. There are instruction
+  The program can run in one of three possible modes (embed, extract, analyze)
+  specified by positional argument. Then, neccessary is also choose one of
+  possible steganography methods to embed message. There are instruction
   substitution and instruction sequence methods. Neither one of them can change
   final size of stego-file. Allowed values of particular arguments are listed
   below.""",
@@ -38,7 +40,7 @@ class ArgsParser():
         cls.__parser.add_argument(
             "mode",
             help="""the mode in which program will run (possible values:
-'e'/'embed', 'x'/'extract' or 'a'/'analyze'')
+'e'/'embed', 'x'/'extract' or 'a'/'analyze')
 
 MODE=embed   - embeds secret message to the cover file
 MODE=extract - extracts secret message from stego-file
