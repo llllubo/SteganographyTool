@@ -1,42 +1,79 @@
-VYGENEROVAT TREE ZO ZLOZKY
+# Digital Steganography for Executables
 
-### PARSOVANIE ARGUMENTOV
+This software is able to embed secret message of any format to the executables ELF and PE (cover file). It's also able to extract hidden data or analyze given executable (its steganography potential). Software uses encryption with user password which is necessary for correct embedding and extraction. If capacity of cover file is not sufficient, steganography can not be applied. There are three implemented modes:
+* `embed`/`e` - requires `-c`/`--cover-file` and `-s`/`--secret-message`
+* `extract`/`x` - requires `g`/`--stego-file`
+* `analyze`/`a` - requires `-c`/`--cover-file`
 
-zadat je mozne len jeden mod -- povinne
-kazdy mod si vyzaduje nejaku podmnozinu optional args - popisane v ?help?
-cestu k suboru je mozne zadat aj relativnu, aj absolutnu
-do uvahy sa beru len options relevantne pre dany mod, ostatne sa ignoruju
-akykolvek arg je mozne zadat viackrat, pouzije sa posledna zadana hodnota (plati okrem modu)
-v pripade nezadanych args program printne help a ukonci sa
-pri zadani --version alebo --help sa vsetky ostatne args neberu do uvahy
-ak sa zada aj -V aj -h, prve zadane plati
-cover a stego files musia byt binarne programy formatu ELF alebo PE, ine nie -- vyskoci error
+In every mode it's necessary to specify method which will be used (argument `-m`/`--method`):
+* `sub`/`instruction-substitution` - basic instruction substitution
+* `ext-sub`/`extended-substitution` - extended instruction substitution
+* `nops`/`nops-using` - steganography using NOP instructions
+* `ext-sub-nops` - combination of all implemented methods
 
-secret message moze byt akakolvek postupnost bajtov (text, subor atd.)
-defaultne je secret message ocakavana na stdin, preto ju nie je nutne zadat cez option ani v pripade embed modu, ktory si ju vyzaduje (ako jediny).
- - ak je SEC MESS zadana na stdin, extrahovana bude ako text do suboru s priponou .txt
-avsak je mozne ju zadat aj cez option (-s):
- - ak je zadana cesta k suboru a existuje, vkladat sa bude subor a extrahuje sa s prislusnou priponou.
- - ak nejde o cestu, vkladat sa bude retazec definujuci text a extrahuje sa do .txt
- - option ma vzdy prednost pred stdin.
- ak sa zrusi vstup na stdin bez akehokolvek vlozeneho znaku alebo sa vlozi "", nic sa nevklada/nedeje; program sa korektne ukonci.
+Neither one of them can change final size of stego-file. For more information about arguments, see `-h`/`--help`.
 
-### embedding
+## Examples
 
-kompresia pouzita xz algo LZMA lebo ma vysoku kompresnu silu, je stredne rychla a pomerne dostupna pre unix (v prvom rade najvyssi kompresny pomer).
+Embedding image to PE executable with combination of all methods (there is also possibility to use any filepath as hidden data or do not specify `-s` - then, secret message is in stdin expected):
 
-### extracting
+```
+python3 main.py embed -m ext-sub-nops -c notepad.exe -s "TEST MESSAGE"
+```
 
+Extraction of the image embedded in previous example:
 
+```
+python3 main.py extract -m ext-sub-nops -g notepad.exe
+```
 
-### ERROR CODES:
-2 error from argparse internal parsing
-100 error caused wrong set of options - args_parser.py
-101 - disassembler error
-102 - selector error
-103 - eq_classes_processor
-104 - embedder error
-105 - extractor error
-109 - common error
+Print analysis of ELF executable for specific method:
 
-OPRAVIT V PROGRAME - verbose vypnut pri analyze mode, pri verbose vypisat cas behu programu? zmenit desatinne nuly pri vypise analyze na max 3, nie min.. nechcem mat .500, mozno dodat do analyzy sucet vsetkych bajtov kodovych sekcii? aby som zistal data rate.
+```
+python3 main.py analyze -m sub -c hello
+```
+
+## Installation
+
+To install every required modul to be able to run software, use following command (from project root directory):
+
+```
+pip install -r requirements.txt
+```
+
+## Testing
+
+For testing purposes exists directory `tests/`. All test must be performed from this directory. Test cases use modul `matplotlib` which generates graphs. To run all test cases, use following command:
+
+```
+python3 test.py
+```
+
+If only specific test cases want to be ran, then others must be commented in code `test.py`.
+
+Required is to place tested executables to the directory `executables/` and desired embedding/extracting data to the directory `data/`.
+
+## Documentation in pdoc
+
+To be able for generating documentation, `pdoc` modul must be installed. Then, following command can be used (must be in a root directory of project):
+
+```
+pdoc ./src/* ./tests/test.py -o ./doc --logo "fit_logo.png" --logo-link "fit_logo.png" --favicon "vut_logo.ico"
+```
+
+## Error codes:
+
+Software can sometimes fail if something is going wrong. There are few error codes specified:
+
+* 2 - internal parsing of command-line arguments
+* 100 - wrong combination of arguments was given
+* 101 - disassembling of given executable failed
+* 102 - error while reading given executable
+* 103 - parsing configuration file failed
+* 104 - embedding failed
+* 105 - extraction failed (usually wrong password)
+* 109 - error while asking for user password
+
+## Copyright
+
+&copy; 2022 Ľuboš Bever. All rights reserved.

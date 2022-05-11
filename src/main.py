@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Steganography for Executables
+"""
+**Steganography for Executables**
 
-Author:  Ľuboš Bever
-Date:    11.05.2022
-Version: 1.0
-Project: Bachelor's thesis, BUT FIT Brno
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
 """ 
  
 
@@ -25,27 +29,34 @@ from common import *
 
 __author__ = "Ľuboš Bever"
 __copyright__ = "Copyright 2022, Ľuboš Bever"
-__credits__ = ["Ľuboš Bever", "Josef Strnadel"]
+__credits__ = ["Ľuboš Bever"]
 __license__ = "GNU GPLv3"
-# __date__ = 
 __version__ = "1.0"
 __maintainer__ = "Ľuboš Bever"
-__email__ = "213409@vutbr.cz" # or __contact__
-__status__ = "Prototype" # "Prototype", "Development", or "Production"
+__email__ = "beverlubos@gmail.com"
+__status__ = "Prototype"
 
 
 class Main:
-
+    """
+    Class contains only `run` method to run the whole program.
+    """
 
     @staticmethod
     def run() -> None:
+        """
+        Run program.
+        """
         
-        # Run timer for case when verbose mode will be used.
-        start = time.time()
+        # Run timer for case when verbose mode will be printed.
+        time_start = time.time()
         
+        # Parse command-line arguments.
         args = ArgsParser.parse()
         
-        # print(f"\nargs:\n{args}\n")
+        # If analyze mode, do not verbose.
+        if args.mode == "a" or args.mode == "analyze":
+            args.verbose = False
         
         # Modes 'embed' and 'analyze' require cover file, others require
         # stego-file.
@@ -57,13 +68,16 @@ class Main:
         else:
             inputf = args.stego_file
         
+        # Prepare empty Analyzer to be filled.
+        analyzer = Analyzer()
+        
         if args.verbose:
             print("Disassembling given executable...")
             sys.stdout.flush()
         
         # Disassemble all instructions from executable and instantiate
         # class MyInstruction for every decoded one.
-        all_my_instrs, bitness = Disassembler.disassemble(inputf)
+        all_my_instrs = Disassembler.disassemble(inputf, analyzer)
         
         if args.verbose:
             print("Parsing configuration file...")
@@ -76,8 +90,7 @@ class Main:
             print("Analyzing given executable...")
             sys.stdout.flush()
         
-        # Prepare empty Analyzer to be filled.
-        analyzer = Analyzer(bitness, 0, 0, 0.0, 0, 0)
+        # Select potential instructions.
         potential_my_instrs = Selector.select(all_my_instrs,
                                               args.method,
                                               args.force,
@@ -143,6 +156,7 @@ class Main:
             # print(f"len(b_secret_data): {len(b_secret_data):,}")
             # print(f"b_fext: {len(b_fext):,} -> {b_fext}")
             
+            ############ TOTO JE OK
             # Lossless compression of secret data.
             b_comp = Embedder.compress(b_secret_data)
             
@@ -163,7 +177,9 @@ class Main:
             
             # Get all parts of data into the one.
             b_message = b_xored_len + b_xored_fext + b_encrypted
+            ############ TOTO JE OK
             
+            ####### ZAKOMENTOVAT
             # b_message = len(b_secret_data).to_bytes(SIZE_OF_DATA_LEN, byteorder="little") + b_fext + b_secret_data
             
             # print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
@@ -196,13 +212,14 @@ class Main:
                                                potential_my_instrs,
                                                args.verbose)
             
-            # print(f"main - extracted_len: {len(bits_extracted) / 8}")
-            # print(f"{bits_extracted.tobytes()}")
+            # # print(f"main - extracted_len: {len(bits_extracted) / 8}")
+            # # print(f"{bits_extracted.tobytes()}")
             # b_fext = bits_extracted[:SIZE_OF_FEXT * 8].tobytes()
-            # print(f"{b_fext}")
+            # # print(f"{b_fext}")
             # b_data = bits_extracted[SIZE_OF_FEXT * 8:].tobytes()
             # Extractor.make_output(b_data, b_fext)
             
+            ######### ODKOMENTOVAT
             if args.verbose:
                 print("Postprocessing of extracted data...")
                 sys.stdout.flush()
@@ -236,6 +253,7 @@ class Main:
                 sys.stdout.flush()
             
             Extractor.make_output(b_decomp, b_unxored_fext)
+            ######### ODKOMENTOVAT
         
         # Only analysis is printed.
         else:
@@ -244,7 +262,8 @@ class Main:
         
         if args.verbose:
             # Print time.
-            print("--- %s seconds ---" % (time.time() - start))
+            print("--- %s seconds ---" % (time.time() - time_start))
+    
     
 if __name__ == "__main__":
     

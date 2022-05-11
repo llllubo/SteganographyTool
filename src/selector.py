@@ -1,3 +1,15 @@
+"""
+`Selector` module
+
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
+"""
+
 import re
 import sys
 
@@ -9,14 +21,21 @@ from eq_classes_processor import EqClassesProcessor
 
 
 class Selector:
+    """
+    `Selector` is responsible for selecting potential instructions usable
+    for embedding/extraction. This selection is made according to the
+    used equivalent classes criteria.
+    """
     
     
     @staticmethod
     def __not_acc_reg(instr: Instruction) -> bool:
-        # Only AH register from all accumaltor registers is allowed,
-        # because following accumulator registers has shorter code
-        # missing ModR/M byte, where magic happens. This function is
-        # designed for TEST instruction of 'test-non-acc-reg' eq. class.
+        """
+        Only AH register from all accumaltor registers is allowed,
+        because following accumulator registers has shorter code
+        missing ModR/M byte, where magic happens. This function is
+        designed for TEST instruction of 'test-non-acc-reg' eq. class.
+        """
         if instr.op0_kind == OpKind.REGISTER and \
            instr.op0_register != Register.AL and \
            instr.op0_register != Register.AX and \
@@ -29,6 +48,9 @@ class Selector:
     
     @staticmethod
     def __non_ebp_esp_reg(reg: Register_) -> bool:
+        """
+        Decide if given register is one of (E)BP or (E)SP registers.
+        """
         if reg == Register.RSP or \
             reg == Register.RBP or \
             reg == Register.ESP or \
@@ -44,8 +66,9 @@ class Selector:
     
     @classmethod
     def __can_swap(cls, instr: Instruction, operand: int) -> bool:
-        # Decide if base ans index memory registers can be swapped.
-        
+        """
+        Decide if base ans index memory registers can be swapped.
+        """
         if instr.op_kind(operand) == OpKind.MEMORY and \
             instr.memory_base != Register.NONE and \
             instr.memory_index != Register.NONE and \
@@ -61,8 +84,9 @@ class Selector:
     
     @staticmethod
     def __is_stack_reg(instr: Instruction) -> bool:
-        # Check occurence of stack register within given instruction.
-        
+        """
+        Check occurence of stack register within given instruction.
+        """
         if instr.op0_kind == OpKind.REGISTER and \
             (
                 instr.op0_register == Register.RSP or \
@@ -79,16 +103,17 @@ class Selector:
                                    my_instr: MyInstruction,
                                    rflags_to_check: int,
                                    force_flag: bool) -> bool:
-        # Liveness detection of modified flags by replacement instruction.
-        # Check given flags if they are live until any instruction which
-        # modifies it come. Execution flow is respected while checking.
-        # Flag is live if instruction which reads it come earlier than
-        # instruction which modofies it. Basic checking is done until
-        # any jump is present. If 'force' flag was given by user,
-        # unconditional jumps are traced and this can achieve bigger
-        # capacity. The end of any function stops checking with positive
-        # result.
-        
+        """
+        Liveness detection of modified flags by replacement instruction.
+        Check given flags if they are live until any instruction which
+        modifies it come. Execution flow is respected while checking.
+        Flag is live if instruction which reads it come earlier than
+        instruction which modofies it. Basic checking is done until
+        any jump is present. If 'force' flag was given by user,
+        unconditional jumps are traced and this can achieve bigger
+        capacity. The end of any function stops checking with positive
+        result.
+        """
         if rflags_to_check == RflagsBits.NONE:
             return True
         
@@ -187,7 +212,10 @@ class Selector:
     def __check_regs_dependency(bitness: int,
                                 reg0: Register_,
                                 reg1: Register_) -> bool:
-        
+        """
+        Check if given registers are influenced by each other (e.g. EAX
+        & RAX).
+        """
         info0 = RegisterInfo(reg0)
         info1 = RegisterInfo(reg1)
         if bitness == 32:
@@ -208,7 +236,9 @@ class Selector:
                          bitness: int,
                          instr: Instruction,
                          reg: Register_) -> bool:
-        
+        """
+        Decide if memory operand of given instruction uses register `reg`.
+        """
         if instr.memory_base != Register.NONE and \
             cls.__check_regs_dependency(bitness, instr.memory_base, reg):
             return True
@@ -226,15 +256,19 @@ class Selector:
                              prev_mov: Instruction,
                              curr_mov: Instruction,
                              bitness: int) -> bool:
-        # Two registers are dependent on each other if their order is
-        # irreplaceable.
-        # If write to any register is performed, it can not be used
-        # anymore (bith sides). If register occurs on left side as
-        # memory operand, it's reading from it and can be used next time
-        # (MOV rax, rax; MOV rax, [rax]).
-        # From specific register or memory location can be read more
-        # times. If it's writing to any memory location, this location
-        # can not be used anymore.
+        """
+        Two registers are dependent on each other if their order is
+        irreplaceable.
+        
+        If write to any register is performed, it can not be used
+        anymore (bith sides). If register occurs on left side as
+        memory operand, it's reading from it and can be used next time
+        (MOV rax, rax; MOV rax, [rax]).
+        
+        From specific register or memory location can be read more
+        times. If it's writing to any memory location, this location
+        can not be used anymore.
+        """
         
         # Can not be exactly two same MOV instructions.
         if prev_mov.eq_all_bits(curr_mov):
@@ -297,8 +331,10 @@ class Selector:
     
     @staticmethod
     def __set_eq_class(instr: MyInstruction, eq_class_name: str) -> None:
-        # Assign desired equivalent class object to the MyInstruction
-        # object according to given eq. class name.
+        """
+        Assign desired equivalent class object to the `MyInstruction`
+        object according to given eq. class name.
+        """
         for obj_eq_class in EqClassesProcessor.all_eq_classes:
             if obj_eq_class.class_name == eq_class_name:
                 instr.set_eq_class = obj_eq_class
@@ -311,7 +347,9 @@ class Selector:
                force_flag: bool,
                fexe: str,
                analyzer: Analyzer) -> list:
-        
+        """
+        Select instructions according to the used equivalent classes.
+        """
         selected_my_instrs = []
         nop90_indicator = 0
         nop6690_indicator = False
@@ -334,7 +372,7 @@ class Selector:
             instr = my_instr.instruction
             op_code = my_instr.instruction.op_code()
 
-
+            ## NOT IMPLEMENTED YET.
             if method == "mov":
                 
                 # Two MOVs in a row.
@@ -380,7 +418,6 @@ class Selector:
                             min_cap += my_instr.eq_class.min_cap
                             max_cap += my_instr.eq_class.max_cap
                             
-                            # print(f".. {prev_mov.ioffset}: {prev_mov.instruction} \t\t {my_instr.ioffset}: {my_instr.instruction}")
                     else:
                         # Set indicator.
                         mov_indicator = True

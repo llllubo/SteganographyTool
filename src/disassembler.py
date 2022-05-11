@@ -1,17 +1,37 @@
+"""
+`Disassmebler` module
+
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
+"""
+
+
 import sys
 import subprocess
 import re
 
 from iced_x86 import *
+from analyzer import Analyzer
 from my_instruction import MyInstruction
 
 
 class Disassembler:
+    """
+    Disassembler parses given executable to the assembler instructions.
+    """
 
     
     @staticmethod
     def __parse_file_bitness(lines: str, fpath: str) -> int:
-        # To get to know, what versions of instructions are allowed.
+        """
+        To get to know, what versions of instructions are allowed.
+        """
+        
         # File bitness parsing.
         re_fformat = re.compile(
             r'file format\s+(?P<farch>[peilf]{2,3}[0-9]{0,2})-(?P<type>.*)'
@@ -38,7 +58,10 @@ class Disassembler:
     
     @staticmethod
     def __parse_code_sections(lines: str, fpath: str) -> list:
-        # Parse executable sections info (name, size, VMA, file offset).
+        """
+        Parse executable sections info (name, size, VMA, file offset).
+        """
+        
         re_code_sections = re.compile(
             r'(?P<section>\.\S+)\s+(?P<size>[0-9a-fA-F]+)\s+(?P<vma>[0-9a-fA-F]+)\s+[0-9a-fA-F]+\s+(?P<foffset>[0-9a-fA-F]+).*[\r\n]+.*CODE'
             )
@@ -56,8 +79,15 @@ class Disassembler:
     
     @classmethod
     def __get_binary_info(cls, fpath: str) -> tuple:
-        # vraciam bitness a pre CODE sekcie: name, size, RIP (VMA), file offset
-        # Often formats: pe[i]-x86-64 | pe[i]-i386 | elf64-.* | elf32-.*
+        """
+        Return `bitness` and for CODE sections following:
+            * name
+            * size
+            * VMA - virtual memory address
+            * file offset
+            
+        Often formats: pe[i]-x86-64 | pe[i]-i386 | elf64-.* | elf32-.*
+        """
         
         # Parse header info and sections info of executable.
         try:
@@ -77,31 +107,13 @@ class Disassembler:
         code_sections = cls.__parse_code_sections(lines, fpath)
         
         return (bitness, code_sections)
-    
-    ######################## DEBUG
-    @staticmethod
-    def __set_formatter() -> object:
-        formatter = Formatter(FormatterSyntax.INTEL)
-        formatter.digit_separator = "'"
-        formatter.hex_digit_group_size = 4
-        formatter.hex_prefix = "0x"
-        formatter.hex_suffix = ""
-        formatter.uppercase_hex = False
-        formatter.first_operand_char_index = 8
-        formatter.space_after_operand_separator = True
-        formatter.space_between_memory_add_operators = True
-        formatter.show_zero_displacements = True
-        # formatter.displacement_leading_zeros = True
-        formatter.always_show_scale = True
-        # formatter.leading_zeros = True
-        formatter.signed_immediate_operands = True
-        
-        return formatter
-    ######################## END DEBUG
 
     
     @classmethod
-    def disassemble(cls, exef: str) -> tuple:
+    def disassemble(cls, exef: str, analyzer: Analyzer) -> list:
+        """
+        Disassemble all founded code sections of executable and create 1MyInstruction` instance for each decoded instruction.
+        """
         
         code_bitness, code_sections = cls.__get_binary_info(exef)
         
@@ -115,10 +127,8 @@ class Disassembler:
         # code section.
         all_my_instrs = []
         
-        ######################## DEBUG
-        # formatter = cls.__set_formatter()
-        ######################## END DEBUG
-        
+        # Counter of instructions total bytes.
+        bytes_total = 0
         # Index of all decoded instructions.
         i = 0
         for sec in code_sections:
@@ -144,16 +154,15 @@ class Disassembler:
                     MyInstruction(instr, instr_foffset, i, None)
                     )
                 
-                ######################## DEBUG
-                # got_op_code = instr.op_code()
-                # disasm = formatter.format(instr)
-                # print(f"{i:8}   {instr_foffset:6x}    {got_op_code.instruction_string:<16}     {disasm:<36}")
-                ######################## END DEBUG
-                
                 i += 1
-            # print()
+            
+            # Count bytes of instructions.
+            bytes_total += sec_size
                 
         # Close read executable.
         fd.close()
+        
+        analyzer.set_bitness = code_bitness
+        analyzer.set_total_code_bytes = bytes_total
 
-        return all_my_instrs, code_bitness
+        return all_my_instrs

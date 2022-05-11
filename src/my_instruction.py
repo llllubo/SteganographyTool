@@ -1,9 +1,23 @@
+"""
+`MyInstruction` module
+
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
+"""
+
 from iced_x86 import Instruction
 from eq_classes_processor import EqClassesProcessor
 
 
 class MyInstruction:
-    
+    """
+    `MyInstruction` represents stored instructions with all needed data.
+    """
     
     def __init__(self,
                  instr: Instruction,
@@ -11,6 +25,9 @@ class MyInstruction:
                  ioffset: int,
                  eq_class: EqClassesProcessor,
                  mov_scheduling_flag: bool = False) -> None:
+        """
+        Create an instance of `MyInstruction`.
+        """
         self.__instr = instr
         self.__foffset = foffset
         self.__ioffset = ioffset
@@ -29,6 +46,10 @@ class MyInstruction:
         
     @property
     def instruction(self) -> Instruction:
+        """
+        Reference to the `Instruction` object, given by `Decoder`
+        (`iced_x86`) while disassembling.
+        """
         return self.__instr
     
     
@@ -39,6 +60,9 @@ class MyInstruction:
         
     @property
     def foffset(self) -> int:
+        """
+        File offset of instruction bytes.
+        """
         return self.__foffset
     
     
@@ -49,6 +73,9 @@ class MyInstruction:
         
     @property
     def ioffset(self) -> int:
+        """
+        Instruction offset within all decoded instructions (its index).
+        """
         return self.__ioffset
     
     
@@ -59,6 +86,9 @@ class MyInstruction:
         
     @property
     def eq_class(self) -> EqClassesProcessor:
+        """
+        Reference to equivalent class where instruction belongs to.
+        """
         return self.__eq_class
     
     
@@ -69,6 +99,9 @@ class MyInstruction:
     
     @property
     def mov_scheduling_flag(self) -> bool:
+        """
+        Flag to say if instruction is MOV belonging to the pair. This flag is used when scheduling MOV also belongs to another class - NOT IMPLEMENTED/USED.
+        """
         return self.__mov_scheduling_flag
     
     

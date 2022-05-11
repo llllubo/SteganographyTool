@@ -1,33 +1,58 @@
+"""
+`ArgsParser` module
+
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
+"""
+
 import os.path
 import sys
 import argparse
 
 
 class ArgsParser():
+    """
+    Parser class for command-line arguments.
+    """
     
     __parser = None
+    """
+    Reference to the created `args_parser` object.
+    """
+    
     __args = None
-        
+    """
+    Reference to the namespace with parsed command-line arguments.
+    """    
         
     @classmethod
     def __set_parser(cls) -> None:
-        # Function only set command-line argument parser by creating
-        # types of possible required, positional and optional arguments.
+        """
+        Only set command-line argument parser by creating
+        types of possible required, positional and optional arguments.
+        """
         
         cls.__parser = argparse.ArgumentParser(
             usage="""
   %(prog)s MODE -m METHOD [-s SECRET_MESSAGE] [-c COVER_FILE] [-g STEGO_FILE]
                          [-o CONFIG_FILE] [-f/--force] [-v/--verbose]
                          [-h/--help] [-V/--version]""",
-            description="""Steganography for Executables
+            description="""Digital Steganography for Executables
 
-  This program embeds and extracts any type of message to given executable.
-  The program can run in one of three possible modes (embed, extract, analyze)
-  specified by positional argument. Then, neccessary is also choose one of
-  possible steganography methods to embed message. There are instruction
-  substitution and instruction sequence methods. Neither one of them can change
-  final size of stego-file. Allowed values of particular arguments are listed
-  below.""",
+  This software is able to embed secret message of any format to the 
+  executables ELF and PE (cover file). It's also able to extract hidden data
+  or analyze given executable (its steganographic potential). Software uses 
+  encryption with user password which is necessary for correct embedding and 
+  extraction. If capacity of cover file is not sufficient, steganography can 
+  not be applied. There are three possible MODES specified by positional 
+  argument. Then, required is also to choose one of possible steganography 
+  methods in every MODEs. Neither one of them can change final size of 
+  stego-file. Allowed values of particular arguments are listed below.""",
             epilog="\u00A9 2022 Ľuboš Bever. All rights reserved.",
             formatter_class=argparse.RawTextHelpFormatter,
             add_help=False,
@@ -39,13 +64,12 @@ class ArgsParser():
         
         cls.__parser.add_argument(
             "mode",
-            help="""the mode in which program will run (possible values:
-'e'/'embed', 'x'/'extract' or 'a'/'analyze')
-
-MODE=embed   - embeds secret message to the cover file
-MODE=extract - extracts secret message from stego-file
-MODE=analyze - analyzes potentional of cover file for
-               given steganography method""",
+            help="""the MODE which program will run in. Possible values
+are:
+ * embed   - embeds secret message to the cover file,
+ * extract - extracts secret message from stego-file,
+ * analyze - analyzes steganographic potential of
+             cover file""",
             metavar="MODE",
             choices=["e", "embed",
                      "x", "extract",
@@ -57,7 +81,11 @@ MODE=analyze - analyzes potentional of cover file for
             "-m",
             "--method",
             help="""steganography METHOD used to embed/extract message or
-analyze cover file (possible values:)""",
+analyze cover file. Possible values are:
+ * 'sub'/'instruction-substitution',
+ * 'ext-sub'/'extended-substitution',
+ * 'nops'/'nops-using',
+ * 'ext-sub-nops'.""",
             metavar="METHOD",
             choices=["sub", "instruction-substitution",
                      "ext-sub", "extended-substitution",
@@ -70,7 +98,7 @@ analyze cover file (possible values:)""",
         cls.__parser.add_argument(
             "-h",
             "--help",
-            help="""show this message and exit
+            help="""show this message and exit (ignores other arguments)
             """,
             action="help",
             default=argparse.SUPPRESS
@@ -79,7 +107,8 @@ analyze cover file (possible values:)""",
             "-s",
             "--secret-message",
             help="""SECRET_MESSAGE to be hidden within executable (any
-sequence of bytes)
+string or file or if nothing is given, SECRET_MESSAGE
+is in stdin expected)
  """,
             default=sys.stdin
             )
@@ -92,22 +121,22 @@ sequence of bytes)
         cls.__parser.add_argument(
             "-g",
             "--stego-file",
-            help="""executable (STEGO_FILE) with embedded secret message
+            help="""STEGO_FILE (executable) with embedded secret message
 to be extracted
             """
             )
         cls.__parser.add_argument(
             "-o",
             "--config-file",
-            help="""configuration file (CONFIG_FILE) with informations
-determining encoding while embedding/extracting message
+            help="""CONFIG_FILE with informations determining encoding
+while embedding/extracting message
             """
             )
         cls.__parser.add_argument(
             "-f",
             "--force",
             help="""strengthen the selection of potential instructions
-(influence only [extended] substitution of instruction)
+(influence only [extended] instruction substitution)
 for the purpose of higher capacity (running the program
 can take up to several minutes)
             """,
@@ -123,8 +152,7 @@ can take up to several minutes)
         cls.__parser.add_argument(
             "-V",
             "--version",
-            help="""show current program's version and exit (ignoring other
-arguments)""",
+            help="""show current version and exit (ignores other arguments)""",
             action="version",
             version="%(prog)s 1.0\n\u00A9 2022 Ľuboš Bever. All rights reserved."
             )
@@ -132,8 +160,10 @@ arguments)""",
         
     @classmethod
     def __eprint(cls, msg: str, ec: int) -> None:
-        # Error print for this module. Its format is respected by used
-        # argsparse module.
+        """
+        Error print for this module. Its format is respected by used
+        argsparse module.
+        """
         
         p = cls.__parser
         print("usage:", file=sys.stderr)
@@ -149,14 +179,19 @@ arguments)""",
         
     @classmethod
     def __check_file(cls, f: str) -> None:
-        # Check if file exists in current file system.
+        """
+        Check if file exists in current file system.
+        """
+        
         if not os.path.isfile(f):           
             cls.__eprint(f"the following value is not a file: {f}", 100)
         
         
     @classmethod
     def __parse_secret_message(cls) -> None:
-        # Parse required data given for embedding.
+        """
+        Parse required data given for embedding.
+        """
         
         # Data are expected on stdin.
         if cls.__args.secret_message == sys.stdin:
@@ -178,8 +213,11 @@ arguments)""",
             
     @classmethod
     def __parse_method(cls, method: str) -> None:
-        # Parse given method. It only exchange their long versions for
-        # short to better manipulate with them in the rest of program.
+        """
+        Parse given method. It only exchange their long versions for
+        short to better manipulate with them in the rest of program.
+        """
+        
         if method == "instruction-substitution":
             cls.__args.method = "sub"
         elif method == "extended-substitution":
@@ -192,9 +230,11 @@ arguments)""",
             
     @classmethod
     def __set_config_file(cls) -> None:
-        # Configuration file must be given by argument if this python
-        # program is run from other than parent and current folder.
-        # Default path to the configuration file is set as well.
+        """
+        Configuration file must be given by argument if this python
+        program is run from other than parent and current folder.
+        Default path to the configuration file is set as well.
+        """
         
         # Configuration file was given by argument.
         if cls.__args.config_file is not None:
@@ -217,6 +257,9 @@ arguments)""",
 
     @classmethod
     def __check_args(cls) -> None:
+        """
+        Check correctness of parsed arguments and convert them to the appropriate form.
+        """
         
         # Print HELP if no arguments were given.
         if len(sys.argv) == 1:
@@ -276,7 +319,10 @@ arguments)""",
 
     @classmethod
     def parse(cls) -> object:
-        # Run argument parser.
+        """
+        Run argument parser.
+        """
+        
         cls.__set_parser()
         cls.__check_args()
         

@@ -1,3 +1,15 @@
+"""
+`EqClassesProcessor` module
+
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
+"""
+
 import json
 import sys
 import re
@@ -7,10 +19,15 @@ from bitarray import *
 
 
 class EqClassesProcessor:
-    # List keeps all instantiated equivalent classes.
+    """
+    `EqClassesProcessor` is responsible for parsing configuration file.
+    """
+    
     all_eq_classes = []
-    
-    
+    """
+    List keeps all instantiated equivalent classes.
+    """
+        
     def __init__(self,
                  method_name: str,
                  class_name: str,
@@ -20,6 +37,10 @@ class EqClassesProcessor:
                  avg_cap: float,
                  min_cap: int,
                  max_cap: int) -> None:
+        """
+        Create equivalent class object to store information from
+        configuraton file.
+        """
         self.__method_name = method_name
         self.__class_name = class_name
         self.__desc = desc
@@ -33,26 +54,42 @@ class EqClassesProcessor:
     
     @property
     def method_name(self) -> str:
+        """
+        Name of the method where equivalent class belongs, taken from configuration file.
+        """
         return self.__method_name
         
     
     @property
     def class_name(self) -> str:
+        """
+        Name of the equivalent class taken from configuration file.
+        """
         return self.__class_name
         
         
     @property
     def desc(self) -> str:
+        """
+        `Description` attribute from configuration file.
+        """
         return self.__desc
         
         
     @property
     def members(self) -> list:
+        """
+        `Members` attribute from configuration file.
+        """
         return self.__members
     
     
     @property
     def encoded_idxs(self) -> list:
+        """
+        Encoded values of class members indexes, It's computed when
+        non-`analyze` mode was given.
+        """
         return self.__encoded_idxs
     
     
@@ -63,29 +100,43 @@ class EqClassesProcessor:
     
     @property
     def avg_cap(self) -> float:
+        """
+        Average capacity added by `Selector` after it's computed.
+        """
         return self.__avg_cap
     
         
     @property
     def min_cap(self) -> int:
+        """
+        Minimum capacity added by `Selector` after it's computed.
+        """
         return self.__min_cap
         
         
     @property
     def max_cap(self) -> int:
+        """
+        Maximum capacity added by `Selector` after it's computed.
+        """
         return self.__max_cap
     
     
     def __repr__(self) -> str:
+        """
+        Used for debugging prints during implementation.
+        """
         return f"\nEqClass('{self.method_name[:10]}...', '{self.class_name}', '{self.desc[:10]}...', {self.members}, {self.encoded_idxs}, {self.avg_cap}, {self.min_cap}, {self.max_cap})"
     
     
     @staticmethod
     def __compute_avg_cap(members: list) -> float:
-        # If within one Equivalent Class is number of members not equal
-        # to Power of 2, then only average capacity can be computed as
-        # real capacity depend on exact occurence of particular members
-        # from class.
+        """
+        If within one Equivalent Class is number of members not equal
+        to Power of 2, then only average capacity can be computed as
+        real capacity depend on exact occurence of particular members
+        from class.
+        """
         n = len(members)
         return math.ceil(math.log2(n) - 1) + \
             (n - pow(2, math.ceil(math.log2(n) - 1))) / \
@@ -94,6 +145,10 @@ class EqClassesProcessor:
     
     @classmethod
     def prepare_eq_classes(cls, method: str, fconfig: str) -> None:
+        """
+        Parse configuration file and instantiate `EqClassesProcessor`
+        with data from configuration file.
+        """
         
         try:
             fd = open(fconfig, "r")
@@ -152,8 +207,10 @@ class EqClassesProcessor:
                     
     @classmethod
     def encode_members_indexes(cls) -> None:
-        # It is used if not analyze mode was given, therefore it's
-        # called after eq_classes objects creation, additionally.
+        """
+        It is used if not `analyze` mode was given, therefore it's
+        called after `eq_classes` objects creation, additionally.
+        """
         for eq_class in cls.all_eq_classes:
             
             mem_len = len(eq_class.members)
@@ -179,8 +236,10 @@ class EqClassesProcessor:
                         
     @classmethod
     def parse_members(cls) -> None:
-        # Parse certain members to bitarrays required to embed or to
-        # extract. Then Embedder and Extractor will just pick this bits.
+        """
+        Parse certain members to bitarrays required to embed or to
+        extract. Then Embedder and Extractor will just pick this bits.
+        """
         for eq_class in cls.all_eq_classes:
             
             if eq_class.class_name == "MOV Scheduling" or \

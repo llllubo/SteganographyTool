@@ -1,3 +1,15 @@
+"""
+`Extractor` module
+
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
+"""
+
 import os
 import re
 import sys
@@ -12,18 +24,32 @@ from my_instruction import MyInstruction
 
 
 class Extractor:
-    __b_key = None
-    __b_passwd = None
+    """
+    `Extractor` is responsible for extracting data from given
+    stego-executable.
+    """
     
+    __b_key = None
+    """
+    Storage of generated key (from password) in bytes.
+    """
+    
+    __b_passwd = None
+    """
+    Storage of given password in bytes.
+    """
     
     @staticmethod
     def __opcode_correction(instr: MyInstruction, opcode: int) -> str:
-        # Correction of read OPCODE to the desired format acceptable for
-        # decode. There is one special case where OPCODE has to be
-        # modified, additionally. It's when 1 byte register operand is
-        # used.
-        # This correction is applied for classes 'SUB/XOR' and
-        # 'TEST/AND/OR'.
+        """
+        Correction of read OPCODE to the desired format acceptable for
+        decode. There is one special case where OPCODE has to be
+        modified, additionally. It's when 1 byte register operand is
+        used.
+        
+        This correction is applied for classes 'SUB/XOR' and
+        'TEST/AND/OR'.
+        """
         if OpCodeInfo(instr.instruction.code).operand_size == 0:
             # Correction of 1 byte operand OPCODE.
             # Endianness does not matter as OPCODE is always 1 byte long.
@@ -35,11 +61,14 @@ class Extractor:
         
     @staticmethod
     def __get_order_type(instr: MyInstruction, next_mov: MyInstruction) -> str:
-        # Determine occuring order. It's designed for classes
-        # 'MOV Scheduling' and 'Swap base-index registers 32-bit' as
-        # only these use scheduling.
-        # Only in case of class 'MOV Scheduling' is 2nd parameter given,
-        # otherwise it's set to None. This parameter is 1st occured MOV.
+        """
+        Determine occuring order. It's designed for classes
+        'MOV Scheduling' and 'Swap base-index registers 32-bit' as
+        only these use scheduling.
+        
+        Only in case of class 'MOV Scheduling' is 2nd parameter given,
+        otherwise it's set to None. This parameter is 1st occured MOV.
+        """
         
         if next_mov is not None:
             if instr.eq_class.class_name == "MOV Scheduling" or \
@@ -59,17 +88,16 @@ class Extractor:
                 return "Ascending"
             else:
                 return "Descending"
-            
-        print(f"{instr.eq_class.class_name}, {instr.instruction}")
-        print(f"{next_mov.eq_class.class_name}, {next_mov.instruction}")
     
     
     @staticmethod
     def __decode_mov(order: str) -> bitarray:
-        # Decode given order. For 'MOV Scheduling' can occur situation
-        # when both MOVs will have set only 'mov_scheduling_flag'.
-        # Therefore can not be used classic '__decode()' function and
-        # this special one was created.
+        """
+        Decode given order. For 'MOV Scheduling' can occur situation
+        when both MOVs will have set only `mov_scheduling_flag`.
+        Therefore can not be used classic `__decode()` function and
+        this special one was created.
+        """
         for eq_class in EqClassesProcessor.all_eq_classes:
             if eq_class.class_name == "MOV Scheduling":
                 for idx, mem in enumerate(eq_class.members):
@@ -79,14 +107,16 @@ class Extractor:
     
     @staticmethod
     def __decode(eq_class: EqClassesProcessor, extracted_mem) -> bitarray:
-        # Decode extracted bits to message bits. This is determined by
-        # encoding defined in configuration file.
-        # extracted_member can be of more data types. It depends on
-        # equivalent class.
+        """
+        Decode extracted bits to message bits. This is determined by
+        encoding defined in configuration file.
+        
+        `extracted_mem` can be of more data types. It depends on
+        equivalent class.
+        """
         for idx, mem in enumerate(eq_class.members):
             if extracted_mem == mem:
                 return eq_class.encoded_idxs[idx]
-        print(f"POZOOOOOOOOOOOR")###########################
     
     
     @classmethod
@@ -94,7 +124,9 @@ class Extractor:
                 fexe: str,
                 potential_my_instrs: list,
                 verbose: bool) -> bitarray:
-        
+        """
+        Extract secret message.
+        """
         try:
             fd = open(fexe, "rb")
         except IOError:
@@ -125,13 +157,10 @@ class Extractor:
         # from their group (3 and 2 Bytes Long NOP classes).
         skip = 0        
         
-        # # Skip flag determines first occurence of scheduling MOV if True.
-        # skip_mov = False
-        
-        # # Determines if MOVs were already scheduled. It's False at the
-        # # beginning, but first MOV set it to True after they are
-        # # scheduled.
-        # movs_scheduled = False
+        # Determines if MOVs were already scheduled. It's False at the
+        # beginning, but first MOV set it to True after they are
+        # scheduled.
+        movs_scheduled = False
             
         for instr_idx, my_instr in enumerate(potential_my_instrs):
             
@@ -151,69 +180,33 @@ class Extractor:
             if eq_class is not None and \
                 instr.encoding == EncodingKind.LEGACY:
                 
-                # op_code = instr.op_code()
-                # fd.seek(my_instr.foffset)
-                # print(f"{eq_class.class_name} | {my_instr.instruction} | {op_code.instruction_string} | {my_instr.foffset:x} | {fd.read(len(my_instr.instruction)).hex()}")
-                
-                # # Encoding is lexicographic order of used instructions
-                # # strings and it's determined by configuration file.
-                # if eq_class.class_name == "MOV Scheduling" or \
-                #     my_instr.mov_scheduling_flag and not movs_scheduled:
+                # Encoding is lexicographic order of used instructions
+                # strings and it's determined by configuration file.
+                if eq_class.class_name == "MOV Scheduling" or \
+                    my_instr.mov_scheduling_flag and not movs_scheduled:
+
+                    ## Second MOV is current, scheduling can be decoded.
+
+                    # Set flag with first MOV - This is only tag for
+                    # knowledge that first MOV was tried to be scheduled.
+                    movs_scheduled = True
+
+                    # Get type of order in which are both MOVs present.
+                    order = cls.__get_order_type(my_instr,
+                                                 potential_my_instrs[instr_idx +1])
+                    # Decode found out order. Here can occur situation
+                    # when both MOVs will have set only
+                    # 'mov_scheduling_flag'. Therefore can not be used
+                    # '__decode()' function here and special one was
+                    # created.
+                    extracted_bits = cls.__decode_mov(order)
                     
-                #     # # Skip is set if first MOV scheduling instruction
-                #     # # occurs.
-                #     # if not skip_mov:
-                #     #     skip_mov = True
-                #     # else:
-                #     #     skip_mov = False
-
-                #     ############# LEN VYPIS
-                #     # if my_instr.mov_scheduling_flag:
-                #     #     print(f"f: {instr}, {eq_class.class_name}")
-                #     # else:
-                #     #     print(f"{instr}, {eq_class.class_name}")
-                #     # print(f"{my_instr.foffset:x}, {len(instr)}")
+                    # Collect decoded bits and create message.
+                    bits_mess.extend(extracted_bits)
+                else:
+                    # Unset flag with second MOV.
+                    movs_scheduled = False
                     
-                #     # mov0 = f"{my_instr.instruction}"
-                #     # mov1 = f"{potential_my_instrs[instr_idx + 1].instruction}"
-                #     # if cls.__lexicographic_mov_sort(mov0) == \
-                #     #     cls.__lexicographic_mov_sort(mov1) and \
-                #     #         skip_mov:
-                #     #     print(".................SAME")
-                    
-                #     # if not skip_mov:
-                #     #     # Second scheduled MOV is current.
-                #     #     print()
-                #     #############
-
-                #     # # First MOV is skipped for now.
-                #     # if skip_mov:
-                #     #     continue
-
-                #     # ## Second MOV is current, scheduling can be decoded.
-
-
-                #     # Set flag with first MOV - This is only tag for
-                #     # knowledge that first MOV was tried to be scheduled.
-                #     movs_scheduled = True
-
-                #     # Get type of order in which are both MOVs present.
-                #     order = cls.__get_order_type(my_instr,
-                #                                  potential_my_instrs[instr_idx +1])
-                #     print(f"order: {order}, {my_instr.instruction}, {potential_my_instrs[instr_idx + 1].instruction}")
-                #     # Decode found out order. Here can occur situation
-                #     # when both MOVs will have set only
-                #     # 'mov_scheduling_flag'. Therefore can not be used
-                #     # '__decode()' function here and special one was
-                #     # created.
-                #     extracted_bits = cls.__decode_mov(order)
-                #     print(f"extracted_bits: {extracted_bits}")
-                #     # Collect decoded bits and create message.
-                #     bits_mess.extend(extracted_bits)
-                #     print()
-                # else:
-                #     # Unset flag with second MOV.
-                #     movs_scheduled = False
                 
                 if re.match(r"^(?:MOV|ADD|SUB|AND|OR|XOR|CMP|ADC|SBB)$",
                           eq_class.class_name) or \
@@ -238,10 +231,6 @@ class Extractor:
                     opcode_idx = common.get_opcode_idx(b_instr_fromf,
                                                        instr_opcode)
                     
-                    # print()
-                    # print(f"{b_instr_fromf.hex()}, {instr_opcode:x}, {opcode_idx}")
-                    # print(f"{bits_instr}")
-                    
                     dir_bit_offset = (opcode_idx * 8) + 6
                     # Decode read Direction bit.
                     extracted_bits = cls.__decode(eq_class,
@@ -249,12 +238,8 @@ class Extractor:
                     
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
-                    
-                    # fd.seek(my_instr.foffset)
-                    # print(f"{fd.read(len(instr)).hex()}")
-                    # if f"{my_instr.foffset:x}" == f"{0x23e1b:x}":
-                    #     sys.exit()
-                
+
+
                 # Encoding is lexicographic order of used registers name
                 # and it's determined by configuration file.
                 if eq_class.class_name == "Swap base-index registers 32-bit":
@@ -275,6 +260,7 @@ class Extractor:
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
                 
+                
                 # Classes can be together as their usage is based on
                 # exactly same principle.
                 elif eq_class.class_name == "2 Bytes Long NOP" or \
@@ -294,17 +280,13 @@ class Extractor:
                     # Convert bytes to hex string.
                     hex_instr = "0x" + b_instr_fromf.hex()
                     
-                    # print()
-                    # print(f"{hex_instr}, {my_instr.instruction}, {skip} -- {eq_class.class_name}")
-                    
                     # Decode read instruction.
                     extracted_bits = bitarray(endian="little")
                     extracted_bits = cls.__decode(eq_class, hex_instr)
                     
-                    # print(f"{extracted_bits}, {extracted_bits.tobytes().hex()}")
-                    
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
+
 
                 # Class does not encodes class members, as it does not
                 # have any. In this case, bits from message are simply
@@ -320,28 +302,18 @@ class Extractor:
                     # There is 100% chance that it will be multiple of 8.
                     b_cnt = bits_cnt // 8
                     
-                    # fd.seek(my_instr.foffset)
-                    # print()
-                    # print(f"{my_instr.foffset:x}, {my_instr.instruction}, {fd.read(len(instr)).hex()}")
-                    # print(f"{bits_cnt}, {b_cnt}")
-                    
                     # Extract from executable.
                     pos = my_instr.foffset + (len(instr) - b_cnt)
                     fd.seek(pos)
                     b_extracted = fd.read(b_cnt)
                     
-                    # print(f"pos: {pos:x}")
-                    
                     # Convert extracted bytes to bits.
                     extracted_bits = bitarray(endian="little")
                     extracted_bits.frombytes(b_extracted)
-                    
-                    # print(f"{extracted_bits}, {extracted_bits.tobytes().hex()}")
-                    
+
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
                     
-                    # print(f"bajtov mam uz: {len(bits_mess) // 8}")
                 
                 # These two classes can be merged as they modify only
                 # Reg/Opcode field inside ModR/M byte.
@@ -374,15 +346,9 @@ class Extractor:
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
                 
+                
                 elif eq_class.class_name == "SUB/XOR" or \
                     eq_class.class_name == "TEST/AND/OR":
-                    # SUB mam nastaveny na klasicky OPCODE 0x29, ale pri
-                    # operandoch al,al atd (reg8 -- pozor aj r12b atd) je OPCODE 0x29-0x1==0x28
-                    # Podobne s XOR.. klasicke 0x31, reg8 0x31-0x1==0x30
-                    # TEST mam nastaveny na klasicky OPCODE 0x85, ale pri
-                    # operandoch al,al atd (reg8 -- pozor aj r12b atd) je OPCODE 0x85-0x1==0x84
-                    # Podobne s AND.. klasicke 0x21, reg8 0x21-0x1==0x20
-                    # Podobne s OR.. klasicke 0x09, reg8 0x09-0x1==0x08
 
                     # Read instruction bytes from file to be able to
                     # analyze it.
@@ -404,53 +370,34 @@ class Extractor:
 
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
+                    
                 
                 elif eq_class.class_name == "ADD negated" or \
                     eq_class.class_name == "SUB negated":
-                    
                     pass
-                                        
+
                 
             else:
-                print()
-                print()
-                print()
-                print(f"CAN NOT BE USED -- NOT LEGACY")
-                print()
-                print()
-                print()
-            
-            
+                print(f"CAN NOT BE USED - NOT LEGACY INSTRUCTION.", file=sys.stderr)
             
             
             if len(bits_mess) >= extract_limit:
                 
-                # print(f"PREKROCENY LIMIT")
-                
                 if not data_extraction_flag:
-                    
-                    # print(f"DLZKA DAT BOLA EXTRAHOVANA")
-                    
                     # If bits defined data length are available, their
                     # length is decoded and set as new extract limit.
                     b_xored_len = bits_mess[:extract_limit].tobytes()
                     
-                    # print(f"{extract_limit}, {len(bits_mess)}, {b_xored_len}")
-                    
                     # UnXOR extracted length of data with password.
                     data_len = cls.__unxor_data_len(b_xored_len)
                     
-                    # print()
-                    # print()
-                    # print(f"extracted (encrypted) data len: {data_len:,}")
-                    # print()
-                    # print()
-                    
                     # Remove bits specifying data length from array.
                     del bits_mess[:extract_limit]
+                    
                     # Set new extraction limit (file extension + raw
                     # data).
                     extract_limit = data_len * 8 + common.SIZE_OF_FEXT * 8
+                    
                     # Set next extracting phase.
                     data_extraction_flag = True
                 else:
@@ -461,12 +408,12 @@ class Extractor:
     
         fd.close()
     
-        ##### KONTROLA CI SA EXTRAHOVALO VSETKO CO SA MALO
+        # Check if all expected data were extracted.
         if len(bits_mess) < extract_limit:
             # Not all requested data could be extracted.
-            pass    ######### HANDEL IT - nemalo by nastat
-            
-            # print(f"SKONCILA EXTRAKCIA A NEEXTRAHOVALO SA VSETKO - small cap.")
+            # This should not happen and if do, it will throw error
+            # when Fernet checks integrity of data,
+            pass
         
         # Correctness of extracted data. Bits extracted in addition,
         # was extracted with last required bits and must be truncated.
@@ -477,9 +424,10 @@ class Extractor:
     
     @classmethod
     def __unxor_data_len(cls, xored_len: bytes) -> int:
-        # Function returns XORed data length as integer and also it
-        # requires password from user.
-
+        """
+        Function returns XORed data length as integer and also it
+        requires password from user.
+        """
         cls.__b_key, cls.__b_passwd = common.gen_key_from_passwd()
         
         # Prepare password length ONLY for XOR operation.
@@ -507,20 +455,18 @@ class Extractor:
         
         b_unxored_len = bytes([a ^ b for a, b in zip(xored_len, b_passwd[:i])])
         
-        # print(f"...{b_unxored_len}")
-        
         # Add null bytes after XOR.
         b_unxored_len += bytes(common.SIZE_OF_DATA_LEN - len(b_unxored_len))
         
-        # print(f"[32B == {len(b_unxored_len):,} -- little] b_unxored_len: {b_unxored_len}")
-
         return int.from_bytes(b_unxored_len, byteorder="little")
     
     
     @classmethod
     def unxor_fext(cls, xored_fext: bytes) -> bytes:
-        # Function returns unXORed file extension in bytes of proposed
-        # length.
+        """
+        Function returns unXORed file extension in bytes of proposed
+        length.
+        """
         
         # Check if there is any file extension, if not, return given
         # bytes.
@@ -551,39 +497,34 @@ class Extractor:
             
             b_unxored_fext = bytes([a ^ b for a, b in zip(xored_fext, b_passwd[:i])])
             
-            # print(f"...{b_unxored_fext}")
-            
             # Add null bytes after XOR.
             b_unxored_fext += bytes(common.SIZE_OF_FEXT - len(b_unxored_fext))
-            
-            # print(f"[8B == {len(b_unxored_fext):,} -- little] b_unxored_fext: {b_unxored_fext}")
-            
+
             return b_unxored_fext
-        
-        # print(f"[8B == {len(xored_fext):,} -- little] b_unxored_fext: {xored_fext}")
         
         return xored_fext
     
     
     @classmethod
     def decrypt_data(cls, data: bytes) -> bytes:
-        # Decrypt given data in bytes.
+        """
+        Decrypt given data in bytes.
+        """
         cipher = Fernet(cls.__b_key)
-        
         try:
             b_decrypted = cipher.decrypt(data)
         except InvalidToken:
             print("ERROR! Wrong password for extracting data.", file=sys.stderr)
             sys.exit(105)
-        
-        # print(f"b_decrypted data len: {len(b_decrypted):,}")
-        
+
         return b_decrypted
     
     
     @staticmethod
     def decompress(content: bytes) -> bytes:
-        # Decompress given data.
+        """
+        Decompress given data.
+        """
         lzd = lzma.LZMADecompressor(format=lzma.FORMAT_XZ)
         
         try:
@@ -592,14 +533,14 @@ class Extractor:
             print("ERROR! While preprocessing extracted data an error occured.", file=sys.stderr)
             sys.exit(105)
         
-        # print(f"b_decomp data len: {len(b_decomp):,}")
-        
         return b_decomp
     
     
     @staticmethod
     def __create_fname(fext: str) -> str:
-        # Create file name for exctrated content with desired extension.
+        """
+        Create file name for exctrated content with desired extension.
+        """
         i = 1 
         while True:
             if os.path.exists(f"./extracted/output{i}{fext}"):
@@ -612,7 +553,9 @@ class Extractor:
     
     @classmethod
     def make_output(cls, data: bytes, fext: bytes) -> None:
-        # Ensure that output directory will be present.
+        """
+        Ensure that output directory will be present.
+        """
         try:
             os.mkdir("./extracted")
         except FileExistsError:

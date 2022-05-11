@@ -1,3 +1,16 @@
+"""
+`common` module defines all functions used by methods of multiple modules.
+
+Author:  *Ľuboš Bever*
+
+Date:    *11.05.2022*
+
+Version: *1.0*
+
+Project: *Bachelor's thesis, BUT FIT Brno*
+"""
+
+
 import sys
 import re
 import base64
@@ -9,33 +22,46 @@ from iced_x86 import (Instruction, OpCodeInfo)
 from my_instruction import MyInstruction
 
 
-# hovori na kolkych bajtoch bude vkladana info o dlzke spravy
 SIZE_OF_DATA_LEN = 32
-# hovori na kolkych bajtoch bude vkladana info o file extension
+"""
+Number of bytes specifying data length inside embedded/extracted data.
+"""
+
 SIZE_OF_FEXT = 8
+"""
+Number of bytes specifying file extension inside embedded/extracted data.
+"""
 
 
 def lexicographic_mov_sort(mov_string: str):
-    # Lexicographic sorter is designed for MOV scheduling. It has 1
-    # imperfection and that is unability to sort two different but
-    # lexicographiclly same instrucion strings.
-    # E.g. MOV [rax], rbx; MOV [rbx], rax.
-    # Example above is allowed by selector, but this function
-    # determines they are same. This scheduling will be skipped if
-    # occurs.
-    # Also, this imprefection has influence on embedding capacity.
-    # As practically was tested, this case is extremely rare,
-    # therefore average capacity is not changed and remains set to 1.
+    """
+    Lexicographic sorter is designed for MOV scheduling. It has 1
+    imperfection and that is unability to sort two different but
+    lexicographiclly same instrucion strings.
+    `E.g. MOV [rax], rbx; MOV [rbx], rax.`
+    
+    Example above is allowed by selector, but this function
+    determines they are same. This scheduling will be skipped if
+    occurs.
+    
+    Also, this imprefection has influence on embedding capacity.
+    As practically was tested, this case is extremely rare,
+    therefore average capacity is not changed and remains set to 1.
+    """
+    
     return sorted(sorted(mov_string), key=str.upper)
 
 
 def set_skip_flag(instr: MyInstruction, next_instr: MyInstruction) -> int:
-    # This function is always performed only for first instruction
-    # of NOPs sequence. There is one special situation, when for
-    # 3 Bytes Long NOP equivalent class, it's not possible to
-    # determine if 1 or 2 next instructions should be skipped
-    # (because of 0x909090 sequence).
-    # This is common procedure for Embedder and Extractor.
+    """
+    This function is always performed only for first instruction
+    of NOPs sequence. There is one special situation, when for
+    3 Bytes Long NOP equivalent class, it's not possible to
+    determine if 1 or 2 next instructions should be skipped
+    (because of `0x909090` sequence).
+    
+    This is common procedure for `Embedder` and `Extractor`.
+    """
 
     if instr.eq_class.class_name == "2 Bytes Long NOP":
         if len(instr.instruction) == 2:
@@ -57,15 +83,15 @@ def set_skip_flag(instr: MyInstruction, next_instr: MyInstruction) -> int:
             else:
                 # Sequence of 1 byte 0x90 and any 2 bytes long NOP.
                 skip = 1
-    else:
-        print(f"HUHHH?")#########################################
-        sys.exit(10000)
         
     return skip
 
 
 def get_opcode_idx(instr: bytes, opcode: int) -> int:
-    # Return index of opcode within instruction bytes.
+    """
+    Return index of opcode within instruction bytes.
+    """
+    
     for idx, b in enumerate(instr):
         if b == opcode:
             return idx
@@ -73,8 +99,10 @@ def get_opcode_idx(instr: bytes, opcode: int) -> int:
 
 def count_useable_bits_from_nop(instr: Instruction,
                                 instr_fromf: bytes) -> int:
-    # This counter is running only for NOP instructions with length more
-    # than 3 bytes.
+    """
+    This counter is running only for NOP instructions with length more
+    than 3 bytes.
+    """
     
     # Get OPCODE index.
     opcode = OpCodeInfo(instr.code).op_code
@@ -84,7 +112,10 @@ def count_useable_bits_from_nop(instr: Instruction,
 
 
 def get_file_extension(f: str) -> bytes:
-    # VZDY VRACIA FEXT V 8 BAJTOCH bez bodky!!!!!
+    """
+    Extract file extension from file path and return it as `SIZE_OF_FEXT` bytes long without dot.
+    """
+    
     # Create regex for file extension match and get it.
     re_fpath = re.compile(r'\.(?P<fext>(tar\.)?\w+)$')
     fpath = re_fpath.search(f)
@@ -106,7 +137,9 @@ def get_file_extension(f: str) -> bytes:
 
 
 def gen_key_from_passwd() -> tuple:
-    # vracia kluc ale aj heslo, potrebujem ho pouzit na XOR s dlzkou spravy
+    """
+    Ask for user password and generate symmetric key derived from it.
+    """
     
     # Makes stdin again useable, if secret message was given from stdin.
     sys.stdin = open('/dev/tty')
