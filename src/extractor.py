@@ -123,9 +123,13 @@ class Extractor:
     def extract(cls,
                 fexe: str,
                 potential_my_instrs: list,
-                verbose: bool) -> bitarray:
+                verbose: bool,
+                passwd: str) -> bitarray:
         """
         Extract secret message.
+        
+        passwd parameter contains password string if was given by option
+        value, otherwise it's None.
         """
         try:
             fd = open(fexe, "rb")
@@ -389,7 +393,7 @@ class Extractor:
                     b_xored_len = bits_mess[:extract_limit].tobytes()
                     
                     # UnXOR extracted length of data with password.
-                    data_len = cls.__unxor_data_len(b_xored_len)
+                    data_len = cls.__unxor_data_len(b_xored_len, passwd)
                     
                     # Remove bits specifying data length from array.
                     del bits_mess[:extract_limit]
@@ -423,12 +427,15 @@ class Extractor:
         
     
     @classmethod
-    def __unxor_data_len(cls, xored_len: bytes) -> int:
+    def __unxor_data_len(cls, xored_len: bytes, passwd: str) -> int:
         """
         Function returns XORed data length as integer and also it
         requires password from user.
+        
+        passwd parameter contains password string if was given by option
+        value, otherwise it's None.
         """
-        cls.__b_key, cls.__b_passwd = common.gen_key_from_passwd()
+        cls.__b_key, cls.__b_passwd = common.gen_key_from_passwd(passwd)
         
         # Prepare password length ONLY for XOR operation.
         if len(cls.__b_passwd) <= common.SIZE_OF_DATA_LEN:

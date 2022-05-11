@@ -136,18 +136,19 @@ def get_file_extension(f: str) -> bytes:
     return bytes(SIZE_OF_FEXT)
 
 
-def gen_key_from_passwd() -> tuple:
+def gen_key_from_passwd(passwd: str) -> tuple:
     """
-    Ask for user password and generate symmetric key derived from it.
+    Ask for user password and generate symmetric key derived from it if
+    no suppressing option was given (-p/--passwd).
     """
-    
-    # Makes stdin again useable, if secret message was given from stdin.
-    sys.stdin = open('/dev/tty')
-    try:
-        passwd = input("Please, enter the password: ")
-    except EOFError:
-        print("\nERROR! Required password was not given.", file=sys.stderr)
-        sys.exit(109)
+    if passwd is None:
+        # Makes stdin again useable, if secret message was given from stdin.
+        sys.stdin = open('/dev/tty')
+        try:
+            passwd = input("Please, enter the password: ")
+        except EOFError:
+            print("\nERROR! Required password was not given.", file=sys.stderr)
+            sys.exit(109)
 
     b_passwd = passwd.encode()
     

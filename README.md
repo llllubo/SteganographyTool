@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 ## Testing
 
-For testing purposes exists directory `tests/`. All test must be performed from this directory. Test cases use modul `matplotlib` which generates graphs. To run all test cases, use following command:
+For testing purposes exists directory `tests/`. All test must be performed from this directory. If any test case needs password, this has to be given by `-p`/`--passwd` option. Test cases use modul `matplotlib` which generates graphs. To run all test cases, use following command:
 
 ```
 python3 test.py

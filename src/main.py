@@ -96,32 +96,6 @@ class Main:
                                               args.force,
                                               inputf,
                                               analyzer)
-            
-        # for a, b in itertools.combinations(potential_my_instrs, 2):
-        #     if id(a) == id(b):
-        #         print(f"kurva..a.. {a.ioffset}, {a.eq_class}, {a.mov_scheduling_flag}")
-        #         print(f"kurva..b.. {b.ioffset}, {b.eq_class}, {b.mov_scheduling_flag}")
-        # return
-        ###### KONTROLNY VYPIS
-        # tmp = 0
-        # for my_instr in potential_my_instrs:
-
-        #     got_op_code = my_instr.instruction.op_code()
-        #     tmp += len(my_instr.instruction)
-        #     # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {got_op_code.instruction_string:<16}     {my_instr.instruction.len:2}", end=" | ")
-        #     print(f"{my_instr.instruction}")
-        #     # print(f"{my_instr.ioffset:8}   {my_instr.foffset:6x}    {my_instr.instruction.len:2}   {got_op_code.instruction_string:<16}", end=" | ")
-        #     # print(f"{my_instr.eq_class.class_name} | {my_instr.instruction}")
-        #     # print(f"{my_instr.eq_class.class_name}")
-        #     # print()
-        #     if my_instr.instruction.encoding != EncodingKind.LEGACY:
-        #         print()
-        #         print()
-        #         print("nieee")
-        #         print()
-        #         print()
-        # print(f"len: {tmp}")
-        # return
         
         # If there was not Analyze mode given, all necessary operations
         # over equivalent classes are done.
@@ -151,19 +125,12 @@ class Main:
             
             # Get secret data and file extension in bytes.
             b_secret_data, b_fext = Embedder.get_secret_data(args.secret_message)
-            
-            # print()
-            # print(f"len(b_secret_data): {len(b_secret_data):,}")
-            # print(f"b_fext: {len(b_fext):,} -> {b_fext}")
-            
-            ############ TOTO JE OK
+
             # Lossless compression of secret data.
             b_comp = Embedder.compress(b_secret_data)
             
-            # print(f"len(b_comp): {len(b_comp):,}")
-            
             # Encrypt compressed secret data.
-            b_encrypted = Embedder.encrypt_data(b_comp)
+            b_encrypted = Embedder.encrypt_data(b_comp, args.passwd)
             
             # Compute length of encrypted data and XOR the length with
             # password. The length is 32 bytes long and do not count
@@ -177,15 +144,6 @@ class Main:
             
             # Get all parts of data into the one.
             b_message = b_xored_len + b_xored_fext + b_encrypted
-            ############ TOTO JE OK
-            
-            ####### ZAKOMENTOVAT
-            # b_message = len(b_secret_data).to_bytes(SIZE_OF_DATA_LEN, byteorder="little") + b_fext + b_secret_data
-            
-            # print(f"MIN CAPACITY: {analyzer.min_capacity / 8} bytes")
-            # print(f"MAX CAPACITY: {analyzer.max_capacity / 8} bytes")
-            # print(f"len(b_message): {len(b_message)} bytes")
-            # print(f"b_message: {b_message}")
 
             # Check if cover file has sufficient capacity and if not,
             # inform and exit the program.
@@ -210,16 +168,9 @@ class Main:
             # Extract all data.
             bits_extracted = Extractor.extract(inputf,
                                                potential_my_instrs,
-                                               args.verbose)
+                                               args.verbose,
+                                               args.passwd)
             
-            # # print(f"main - extracted_len: {len(bits_extracted) / 8}")
-            # # print(f"{bits_extracted.tobytes()}")
-            # b_fext = bits_extracted[:SIZE_OF_FEXT * 8].tobytes()
-            # # print(f"{b_fext}")
-            # b_data = bits_extracted[SIZE_OF_FEXT * 8:].tobytes()
-            # Extractor.make_output(b_data, b_fext)
-            
-            ######### ODKOMENTOVAT
             if args.verbose:
                 print("Postprocessing of extracted data...")
                 sys.stdout.flush()
@@ -230,30 +181,21 @@ class Main:
             # File extension bits can be deleted to get pure data bits.
             del bits_extracted[:SIZE_OF_FEXT * 8]
             
-            # print(f"{b_xored_fext}")
-            
             # UnXOR extracted file extension with password.
             b_unxored_fext = Extractor.unxor_fext(b_xored_fext)
-            
-            # print(f"{b_unxored_fext}")
             
             # Decrypt extracted data.
             b_encrypted = bits_extracted.tobytes()
             b_decrypted = Extractor.decrypt_data(b_encrypted)
             
-            # print(f"{b_decrypted}")
-            
             # Decompress decrypted data and get secret message.
             b_decomp = Extractor.decompress(b_decrypted)
-            
-            # print(f"{b_decomp}")
-            
+
             if args.verbose:
                 print("Generating output...")
                 sys.stdout.flush()
             
             Extractor.make_output(b_decomp, b_unxored_fext)
-            ######### ODKOMENTOVAT
         
         # Only analysis is printed.
         else:

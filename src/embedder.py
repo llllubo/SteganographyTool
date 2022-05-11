@@ -90,12 +90,11 @@ class Embedder:
     
     
     @classmethod
-    def encrypt_data(cls, data: bytes) -> bytes:
+    def encrypt_data(cls, data: bytes, passwd: str) -> bytes:
         """
         Encrypt given data in bytes with given password.
         """
-        
-        b_key, cls.__b_passwd = common.gen_key_from_passwd()
+        b_key, cls.__b_passwd = common.gen_key_from_passwd(passwd)
         cipher = Fernet(b_key)
         b_encrypted = cipher.encrypt(data)
         
@@ -488,21 +487,6 @@ class Embedder:
         """
         Make two's complement of immediate operand.
         """
-    
-        # print(f"instr.immediate(1):x -- {instr.immediate(1):x}")
-    
-        # bits_imm = bitarray()
-        # bits_imm.frombytes(instr.immediate(1).to_bytes(op_size,
-        #                                                byteorder="little",
-        #                                                signed=True))
-        # print(f"{bits_imm}")
-        # # bits_imm = ~bits_imm
-        # # print(f"{bits_imm}")
-        # # bits_imm += 1
-        # # print(f"{bits_imm}")
-        
-        # # sys.exit()
-        # print(f"{imm:x}")
         
         bits_number = int("{0:08b}".format(instr.immediate(1)))
         flipped_bits_number = ~ bits_number
@@ -513,18 +497,6 @@ class Embedder:
             op_size,
             byteorder="little",
             signed=True)
-        
-        # imm = instr.immediate(1)
-        # bits_size = op_size * 8
-        # if imm < 0:
-        #     imm = (1 << bits_size) + imm
-        # else:
-        #     if (imm & (1 << (bits_size - 1))) != 0:
-        #         # If sign bit is set.
-        #         # compute negative value.
-        #         imm = imm - (1 << bits_size)
-        # print(f"{imm:x}")
-        # return imm
             
             
     @staticmethod
@@ -532,10 +504,7 @@ class Embedder:
         """
         Get index position of immediate operand inside instruction.
         """
-        
         b_imm = imm.to_bytes(op_size, byteorder="little", signed=True)
-        
-        # print(f"b_imm: {b_imm.hex()}")
         
         return instr_fromf.find(b_imm)
 

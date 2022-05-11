@@ -61,8 +61,8 @@ def test_encoding_rates():
                         cmd,
                         stderr=subprocess.STDOUT,
                         shell=True)
-            except subprocess.CalledProcessError:
-                print(f"ERROR! Can not run command: {cmd}", file=sys.stderr)
+            except subprocess.CalledProcessError as e:
+                print(f"ERROR! Can not run command: {cmd}\n{e.output.decode()}", file=sys.stderr)
                 sys.exit(1)
             
             lines = b_lines.decode()
@@ -153,11 +153,15 @@ def test_time_force():
     time_f = []
     time_non_f = []
     times_longer = []
-        
+    
+    # Find some data to embed.
+    data = os.listdir(MESS_PATH)
+    
     # NEED TO USE OPTION TO SUPPRESS ENCRYPTION.
     cmd = f"python3 ../src/main.py -v " + "embed" + \
         " -m " + "ext-sub-nops" + \
-        " -s ./data/aa.c" + \
+        f" -s {MESS_PATH}{data}" + \
+        " -p 'password'" + \
         " -c "
     
     for fname in os.listdir(EXE_PATH):
@@ -166,16 +170,14 @@ def test_time_force():
         
             fpath = os.path.join(EXE_PATH, fname)
             
-            # try:
-            #     b_lines = subprocess.check_output(
-            #             cmd + f"{fpath}{force}",
-            #             stderr=subprocess.STDOUT,
-            #             shell=True)
-            # except subprocess.CalledProcessError:
-            #     print(f"ERROR! Can not run command: {cmd}{fpath}{force}", file=sys.stderr)
-            #     sys.exit(1)
-            child_proccess = subprocess.Popen(cmd + f"{fpath}{force}", stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,)
-            b_lines = child_proccess.communicate(b"I love beans \n I like cars")[0]
+            try:
+                b_lines = subprocess.check_output(
+                        cmd + f"{fpath}{force}",
+                        stderr=subprocess.STDOUT,
+                        shell=True)
+            except subprocess.CalledProcessError as e:
+                print(f"ERROR! Can not run command: {cmd}{fpath}{force}\n{e.output.decode()}", file=sys.stderr)
+                sys.exit(1)
             
             lines = b_lines.decode()
 
@@ -274,8 +276,8 @@ def test_capacity_force():
                         cmd + f"{fpath}{force}",
                         stderr=subprocess.STDOUT,
                         shell=True)
-            except subprocess.CalledProcessError:
-                print(f"ERROR! Can not run command: {cmd}{fpath}{force}", file=sys.stderr)
+            except subprocess.CalledProcessError as e:
+                print(f"ERROR! Can not run command: {cmd}{fpath}{force}\n{e.output.decode()}", file=sys.stderr)
                 sys.exit(1)
             
             lines = b_lines.decode()
@@ -372,8 +374,8 @@ def test_capacity():
                     cmd,
                     stderr=subprocess.STDOUT,
                     shell=True)
-        except subprocess.CalledProcessError:
-            print(f"ERROR! Can not run command: {cmd}", file=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(f"ERROR! Can not run command: {cmd}\n{e.output.decode()}", file=sys.stderr)
             sys.exit(1)
         
         lines = b_lines.decode()
@@ -453,8 +455,8 @@ def run_check():
                     cmd,
                     stderr=subprocess.STDOUT,
                     shell=True)
-        except subprocess.CalledProcessError:
-            print(f"ERROR! Can not run command: {cmd}", file=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(f"ERROR! Can not run command: {cmd}\n{e.output.decode()}", file=sys.stderr)
             sys.exit(1)
             
         # Run with modified program utility.
@@ -464,8 +466,8 @@ def run_check():
                     cmd2,
                     stderr=subprocess.STDOUT,
                     shell=True)
-        except subprocess.CalledProcessError:
-            print(f"ERROR! Can not run command {cmd2}", file=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(f"ERROR! Can not run command {cmd2}\n{e.output.decode()}", file=sys.stderr)
             sys.exit(1)
             
         # Check outputs.

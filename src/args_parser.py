@@ -152,9 +152,17 @@ can take up to several minutes)
         cls.__parser.add_argument(
             "-V",
             "--version",
-            help="""show current version and exit (ignores other arguments)""",
+            help="""show current version and exit (ignores other arguments)
+            """,
             action="version",
             version="%(prog)s 1.0\n\u00A9 2022 Ľuboš Bever. All rights reserved."
+            )
+        cls.__parser.add_argument(
+            "-p",
+            "--passwd",
+            help="""PASSWD password is given to suppress asking password
+(mainly because of tests)""",
+            default=None
             )
         
         

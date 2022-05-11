@@ -225,33 +225,34 @@ common    </h1>
 </span><span id="L-135"><a href="#L-135"><span class="linenos">135</span></a>    <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">SIZE_OF_FEXT</span><span class="p">)</span>
 </span><span id="L-136"><a href="#L-136"><span class="linenos">136</span></a>
 </span><span id="L-137"><a href="#L-137"><span class="linenos">137</span></a>
-</span><span id="L-138"><a href="#L-138"><span class="linenos">138</span></a><span class="k">def</span> <span class="nf">gen_key_from_passwd</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+</span><span id="L-138"><a href="#L-138"><span class="linenos">138</span></a><span class="k">def</span> <span class="nf">gen_key_from_passwd</span><span class="p">(</span><span class="n">passwd</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
 </span><span id="L-139"><a href="#L-139"><span class="linenos">139</span></a>    <span class="sd">&quot;&quot;&quot;</span>
-</span><span id="L-140"><a href="#L-140"><span class="linenos">140</span></a><span class="sd">    Ask for user password and generate symmetric key derived from it.</span>
-</span><span id="L-141"><a href="#L-141"><span class="linenos">141</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="L-142"><a href="#L-142"><span class="linenos">142</span></a>    
-</span><span id="L-143"><a href="#L-143"><span class="linenos">143</span></a>    <span class="c1"># Makes stdin again useable, if secret message was given from stdin.</span>
-</span><span id="L-144"><a href="#L-144"><span class="linenos">144</span></a>    <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/dev/tty&#39;</span><span class="p">)</span>
-</span><span id="L-145"><a href="#L-145"><span class="linenos">145</span></a>    <span class="k">try</span><span class="p">:</span>
-</span><span id="L-146"><a href="#L-146"><span class="linenos">146</span></a>        <span class="n">passwd</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please, enter the password: &quot;</span><span class="p">)</span>
-</span><span id="L-147"><a href="#L-147"><span class="linenos">147</span></a>    <span class="k">except</span> <span class="ne">EOFError</span><span class="p">:</span>
-</span><span id="L-148"><a href="#L-148"><span class="linenos">148</span></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">ERROR! Required password was not given.&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
-</span><span id="L-149"><a href="#L-149"><span class="linenos">149</span></a>        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">109</span><span class="p">)</span>
-</span><span id="L-150"><a href="#L-150"><span class="linenos">150</span></a>
-</span><span id="L-151"><a href="#L-151"><span class="linenos">151</span></a>    <span class="n">b_passwd</span> <span class="o">=</span> <span class="n">passwd</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-</span><span id="L-152"><a href="#L-152"><span class="linenos">152</span></a>    
-</span><span id="L-153"><a href="#L-153"><span class="linenos">153</span></a>    <span class="c1"># Was generated from os.urandom(16) python function.</span>
-</span><span id="L-154"><a href="#L-154"><span class="linenos">154</span></a>    <span class="n">b_salt</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x8d\x8f</span><span class="s1">k</span><span class="se">\xe9</span><span class="s1">,</span><span class="se">\x8e\x12\xe5\x0f\x92\xb7</span><span class="s1">]-</span><span class="se">\x8f\x16</span><span class="s1">T&#39;</span>
-</span><span id="L-155"><a href="#L-155"><span class="linenos">155</span></a>    <span class="n">kdf</span> <span class="o">=</span> <span class="n">PBKDF2HMAC</span><span class="p">(</span>
-</span><span id="L-156"><a href="#L-156"><span class="linenos">156</span></a>        <span class="n">algorithm</span><span class="o">=</span><span class="n">hashes</span><span class="o">.</span><span class="n">SHA256</span><span class="p">,</span>
-</span><span id="L-157"><a href="#L-157"><span class="linenos">157</span></a>        <span class="n">length</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
-</span><span id="L-158"><a href="#L-158"><span class="linenos">158</span></a>        <span class="n">salt</span><span class="o">=</span><span class="n">b_salt</span><span class="p">,</span>
-</span><span id="L-159"><a href="#L-159"><span class="linenos">159</span></a>        <span class="n">iterations</span><span class="o">=</span><span class="mi">390000</span><span class="p">,</span>
-</span><span id="L-160"><a href="#L-160"><span class="linenos">160</span></a>        <span class="n">backend</span><span class="o">=</span><span class="n">default_backend</span>
-</span><span id="L-161"><a href="#L-161"><span class="linenos">161</span></a>    <span class="p">)</span>
-</span><span id="L-162"><a href="#L-162"><span class="linenos">162</span></a>    <span class="n">b_key</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">urlsafe_b64encode</span><span class="p">(</span><span class="n">kdf</span><span class="o">.</span><span class="n">derive</span><span class="p">(</span><span class="n">b_passwd</span><span class="p">))</span>
-</span><span id="L-163"><a href="#L-163"><span class="linenos">163</span></a>    
-</span><span id="L-164"><a href="#L-164"><span class="linenos">164</span></a>    <span class="k">return</span> <span class="n">b_key</span><span class="p">,</span> <span class="n">b_passwd</span>
+</span><span id="L-140"><a href="#L-140"><span class="linenos">140</span></a><span class="sd">    Ask for user password and generate symmetric key derived from it if</span>
+</span><span id="L-141"><a href="#L-141"><span class="linenos">141</span></a><span class="sd">    no suppressing option was given (-p/--passwd).</span>
+</span><span id="L-142"><a href="#L-142"><span class="linenos">142</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-143"><a href="#L-143"><span class="linenos">143</span></a>    <span class="k">if</span> <span class="n">passwd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-144"><a href="#L-144"><span class="linenos">144</span></a>        <span class="c1"># Makes stdin again useable, if secret message was given from stdin.</span>
+</span><span id="L-145"><a href="#L-145"><span class="linenos">145</span></a>        <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/dev/tty&#39;</span><span class="p">)</span>
+</span><span id="L-146"><a href="#L-146"><span class="linenos">146</span></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="L-147"><a href="#L-147"><span class="linenos">147</span></a>            <span class="n">passwd</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please, enter the password: &quot;</span><span class="p">)</span>
+</span><span id="L-148"><a href="#L-148"><span class="linenos">148</span></a>        <span class="k">except</span> <span class="ne">EOFError</span><span class="p">:</span>
+</span><span id="L-149"><a href="#L-149"><span class="linenos">149</span></a>            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">ERROR! Required password was not given.&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span><span id="L-150"><a href="#L-150"><span class="linenos">150</span></a>            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">109</span><span class="p">)</span>
+</span><span id="L-151"><a href="#L-151"><span class="linenos">151</span></a>
+</span><span id="L-152"><a href="#L-152"><span class="linenos">152</span></a>    <span class="n">b_passwd</span> <span class="o">=</span> <span class="n">passwd</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+</span><span id="L-153"><a href="#L-153"><span class="linenos">153</span></a>    
+</span><span id="L-154"><a href="#L-154"><span class="linenos">154</span></a>    <span class="c1"># Was generated from os.urandom(16) python function.</span>
+</span><span id="L-155"><a href="#L-155"><span class="linenos">155</span></a>    <span class="n">b_salt</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x8d\x8f</span><span class="s1">k</span><span class="se">\xe9</span><span class="s1">,</span><span class="se">\x8e\x12\xe5\x0f\x92\xb7</span><span class="s1">]-</span><span class="se">\x8f\x16</span><span class="s1">T&#39;</span>
+</span><span id="L-156"><a href="#L-156"><span class="linenos">156</span></a>    <span class="n">kdf</span> <span class="o">=</span> <span class="n">PBKDF2HMAC</span><span class="p">(</span>
+</span><span id="L-157"><a href="#L-157"><span class="linenos">157</span></a>        <span class="n">algorithm</span><span class="o">=</span><span class="n">hashes</span><span class="o">.</span><span class="n">SHA256</span><span class="p">,</span>
+</span><span id="L-158"><a href="#L-158"><span class="linenos">158</span></a>        <span class="n">length</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+</span><span id="L-159"><a href="#L-159"><span class="linenos">159</span></a>        <span class="n">salt</span><span class="o">=</span><span class="n">b_salt</span><span class="p">,</span>
+</span><span id="L-160"><a href="#L-160"><span class="linenos">160</span></a>        <span class="n">iterations</span><span class="o">=</span><span class="mi">390000</span><span class="p">,</span>
+</span><span id="L-161"><a href="#L-161"><span class="linenos">161</span></a>        <span class="n">backend</span><span class="o">=</span><span class="n">default_backend</span>
+</span><span id="L-162"><a href="#L-162"><span class="linenos">162</span></a>    <span class="p">)</span>
+</span><span id="L-163"><a href="#L-163"><span class="linenos">163</span></a>    <span class="n">b_key</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">urlsafe_b64encode</span><span class="p">(</span><span class="n">kdf</span><span class="o">.</span><span class="n">derive</span><span class="p">(</span><span class="n">b_passwd</span><span class="p">))</span>
+</span><span id="L-164"><a href="#L-164"><span class="linenos">164</span></a>    
+</span><span id="L-165"><a href="#L-165"><span class="linenos">165</span></a>    <span class="k">return</span> <span class="n">b_key</span><span class="p">,</span> <span class="n">b_passwd</span>
 </span></pre></div>
 
         </details>
@@ -495,43 +496,45 @@ than 3 bytes.</p>
 
         
             <span class="def">def</span>
-            <span class="name">gen_key_from_passwd</span><span class="signature">() -&gt; tuple</span>:
+            <span class="name">gen_key_from_passwd</span><span class="signature">(passwd: str) -&gt; tuple</span>:
     </div>
 
             <details>
             <summary>View Source</summary>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="gen_key_from_passwd-139"><a href="#gen_key_from_passwd-139"><span class="linenos">139</span></a><span class="k">def</span> <span class="nf">gen_key_from_passwd</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="gen_key_from_passwd-139"><a href="#gen_key_from_passwd-139"><span class="linenos">139</span></a><span class="k">def</span> <span class="nf">gen_key_from_passwd</span><span class="p">(</span><span class="n">passwd</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
 </span><span id="gen_key_from_passwd-140"><a href="#gen_key_from_passwd-140"><span class="linenos">140</span></a>    <span class="sd">&quot;&quot;&quot;</span>
-</span><span id="gen_key_from_passwd-141"><a href="#gen_key_from_passwd-141"><span class="linenos">141</span></a><span class="sd">    Ask for user password and generate symmetric key derived from it.</span>
-</span><span id="gen_key_from_passwd-142"><a href="#gen_key_from_passwd-142"><span class="linenos">142</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="gen_key_from_passwd-143"><a href="#gen_key_from_passwd-143"><span class="linenos">143</span></a>    
-</span><span id="gen_key_from_passwd-144"><a href="#gen_key_from_passwd-144"><span class="linenos">144</span></a>    <span class="c1"># Makes stdin again useable, if secret message was given from stdin.</span>
-</span><span id="gen_key_from_passwd-145"><a href="#gen_key_from_passwd-145"><span class="linenos">145</span></a>    <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/dev/tty&#39;</span><span class="p">)</span>
-</span><span id="gen_key_from_passwd-146"><a href="#gen_key_from_passwd-146"><span class="linenos">146</span></a>    <span class="k">try</span><span class="p">:</span>
-</span><span id="gen_key_from_passwd-147"><a href="#gen_key_from_passwd-147"><span class="linenos">147</span></a>        <span class="n">passwd</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please, enter the password: &quot;</span><span class="p">)</span>
-</span><span id="gen_key_from_passwd-148"><a href="#gen_key_from_passwd-148"><span class="linenos">148</span></a>    <span class="k">except</span> <span class="ne">EOFError</span><span class="p">:</span>
-</span><span id="gen_key_from_passwd-149"><a href="#gen_key_from_passwd-149"><span class="linenos">149</span></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">ERROR! Required password was not given.&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
-</span><span id="gen_key_from_passwd-150"><a href="#gen_key_from_passwd-150"><span class="linenos">150</span></a>        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">109</span><span class="p">)</span>
-</span><span id="gen_key_from_passwd-151"><a href="#gen_key_from_passwd-151"><span class="linenos">151</span></a>
-</span><span id="gen_key_from_passwd-152"><a href="#gen_key_from_passwd-152"><span class="linenos">152</span></a>    <span class="n">b_passwd</span> <span class="o">=</span> <span class="n">passwd</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-</span><span id="gen_key_from_passwd-153"><a href="#gen_key_from_passwd-153"><span class="linenos">153</span></a>    
-</span><span id="gen_key_from_passwd-154"><a href="#gen_key_from_passwd-154"><span class="linenos">154</span></a>    <span class="c1"># Was generated from os.urandom(16) python function.</span>
-</span><span id="gen_key_from_passwd-155"><a href="#gen_key_from_passwd-155"><span class="linenos">155</span></a>    <span class="n">b_salt</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x8d\x8f</span><span class="s1">k</span><span class="se">\xe9</span><span class="s1">,</span><span class="se">\x8e\x12\xe5\x0f\x92\xb7</span><span class="s1">]-</span><span class="se">\x8f\x16</span><span class="s1">T&#39;</span>
-</span><span id="gen_key_from_passwd-156"><a href="#gen_key_from_passwd-156"><span class="linenos">156</span></a>    <span class="n">kdf</span> <span class="o">=</span> <span class="n">PBKDF2HMAC</span><span class="p">(</span>
-</span><span id="gen_key_from_passwd-157"><a href="#gen_key_from_passwd-157"><span class="linenos">157</span></a>        <span class="n">algorithm</span><span class="o">=</span><span class="n">hashes</span><span class="o">.</span><span class="n">SHA256</span><span class="p">,</span>
-</span><span id="gen_key_from_passwd-158"><a href="#gen_key_from_passwd-158"><span class="linenos">158</span></a>        <span class="n">length</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
-</span><span id="gen_key_from_passwd-159"><a href="#gen_key_from_passwd-159"><span class="linenos">159</span></a>        <span class="n">salt</span><span class="o">=</span><span class="n">b_salt</span><span class="p">,</span>
-</span><span id="gen_key_from_passwd-160"><a href="#gen_key_from_passwd-160"><span class="linenos">160</span></a>        <span class="n">iterations</span><span class="o">=</span><span class="mi">390000</span><span class="p">,</span>
-</span><span id="gen_key_from_passwd-161"><a href="#gen_key_from_passwd-161"><span class="linenos">161</span></a>        <span class="n">backend</span><span class="o">=</span><span class="n">default_backend</span>
-</span><span id="gen_key_from_passwd-162"><a href="#gen_key_from_passwd-162"><span class="linenos">162</span></a>    <span class="p">)</span>
-</span><span id="gen_key_from_passwd-163"><a href="#gen_key_from_passwd-163"><span class="linenos">163</span></a>    <span class="n">b_key</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">urlsafe_b64encode</span><span class="p">(</span><span class="n">kdf</span><span class="o">.</span><span class="n">derive</span><span class="p">(</span><span class="n">b_passwd</span><span class="p">))</span>
-</span><span id="gen_key_from_passwd-164"><a href="#gen_key_from_passwd-164"><span class="linenos">164</span></a>    
-</span><span id="gen_key_from_passwd-165"><a href="#gen_key_from_passwd-165"><span class="linenos">165</span></a>    <span class="k">return</span> <span class="n">b_key</span><span class="p">,</span> <span class="n">b_passwd</span>
+</span><span id="gen_key_from_passwd-141"><a href="#gen_key_from_passwd-141"><span class="linenos">141</span></a><span class="sd">    Ask for user password and generate symmetric key derived from it if</span>
+</span><span id="gen_key_from_passwd-142"><a href="#gen_key_from_passwd-142"><span class="linenos">142</span></a><span class="sd">    no suppressing option was given (-p/--passwd).</span>
+</span><span id="gen_key_from_passwd-143"><a href="#gen_key_from_passwd-143"><span class="linenos">143</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="gen_key_from_passwd-144"><a href="#gen_key_from_passwd-144"><span class="linenos">144</span></a>    <span class="k">if</span> <span class="n">passwd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="gen_key_from_passwd-145"><a href="#gen_key_from_passwd-145"><span class="linenos">145</span></a>        <span class="c1"># Makes stdin again useable, if secret message was given from stdin.</span>
+</span><span id="gen_key_from_passwd-146"><a href="#gen_key_from_passwd-146"><span class="linenos">146</span></a>        <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/dev/tty&#39;</span><span class="p">)</span>
+</span><span id="gen_key_from_passwd-147"><a href="#gen_key_from_passwd-147"><span class="linenos">147</span></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="gen_key_from_passwd-148"><a href="#gen_key_from_passwd-148"><span class="linenos">148</span></a>            <span class="n">passwd</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please, enter the password: &quot;</span><span class="p">)</span>
+</span><span id="gen_key_from_passwd-149"><a href="#gen_key_from_passwd-149"><span class="linenos">149</span></a>        <span class="k">except</span> <span class="ne">EOFError</span><span class="p">:</span>
+</span><span id="gen_key_from_passwd-150"><a href="#gen_key_from_passwd-150"><span class="linenos">150</span></a>            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">ERROR! Required password was not given.&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span><span id="gen_key_from_passwd-151"><a href="#gen_key_from_passwd-151"><span class="linenos">151</span></a>            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">109</span><span class="p">)</span>
+</span><span id="gen_key_from_passwd-152"><a href="#gen_key_from_passwd-152"><span class="linenos">152</span></a>
+</span><span id="gen_key_from_passwd-153"><a href="#gen_key_from_passwd-153"><span class="linenos">153</span></a>    <span class="n">b_passwd</span> <span class="o">=</span> <span class="n">passwd</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+</span><span id="gen_key_from_passwd-154"><a href="#gen_key_from_passwd-154"><span class="linenos">154</span></a>    
+</span><span id="gen_key_from_passwd-155"><a href="#gen_key_from_passwd-155"><span class="linenos">155</span></a>    <span class="c1"># Was generated from os.urandom(16) python function.</span>
+</span><span id="gen_key_from_passwd-156"><a href="#gen_key_from_passwd-156"><span class="linenos">156</span></a>    <span class="n">b_salt</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x8d\x8f</span><span class="s1">k</span><span class="se">\xe9</span><span class="s1">,</span><span class="se">\x8e\x12\xe5\x0f\x92\xb7</span><span class="s1">]-</span><span class="se">\x8f\x16</span><span class="s1">T&#39;</span>
+</span><span id="gen_key_from_passwd-157"><a href="#gen_key_from_passwd-157"><span class="linenos">157</span></a>    <span class="n">kdf</span> <span class="o">=</span> <span class="n">PBKDF2HMAC</span><span class="p">(</span>
+</span><span id="gen_key_from_passwd-158"><a href="#gen_key_from_passwd-158"><span class="linenos">158</span></a>        <span class="n">algorithm</span><span class="o">=</span><span class="n">hashes</span><span class="o">.</span><span class="n">SHA256</span><span class="p">,</span>
+</span><span id="gen_key_from_passwd-159"><a href="#gen_key_from_passwd-159"><span class="linenos">159</span></a>        <span class="n">length</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+</span><span id="gen_key_from_passwd-160"><a href="#gen_key_from_passwd-160"><span class="linenos">160</span></a>        <span class="n">salt</span><span class="o">=</span><span class="n">b_salt</span><span class="p">,</span>
+</span><span id="gen_key_from_passwd-161"><a href="#gen_key_from_passwd-161"><span class="linenos">161</span></a>        <span class="n">iterations</span><span class="o">=</span><span class="mi">390000</span><span class="p">,</span>
+</span><span id="gen_key_from_passwd-162"><a href="#gen_key_from_passwd-162"><span class="linenos">162</span></a>        <span class="n">backend</span><span class="o">=</span><span class="n">default_backend</span>
+</span><span id="gen_key_from_passwd-163"><a href="#gen_key_from_passwd-163"><span class="linenos">163</span></a>    <span class="p">)</span>
+</span><span id="gen_key_from_passwd-164"><a href="#gen_key_from_passwd-164"><span class="linenos">164</span></a>    <span class="n">b_key</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">urlsafe_b64encode</span><span class="p">(</span><span class="n">kdf</span><span class="o">.</span><span class="n">derive</span><span class="p">(</span><span class="n">b_passwd</span><span class="p">))</span>
+</span><span id="gen_key_from_passwd-165"><a href="#gen_key_from_passwd-165"><span class="linenos">165</span></a>    
+</span><span id="gen_key_from_passwd-166"><a href="#gen_key_from_passwd-166"><span class="linenos">166</span></a>    <span class="k">return</span> <span class="n">b_key</span><span class="p">,</span> <span class="n">b_passwd</span>
 </span></pre></div>
 
         </details>
 
-            <div class="docstring"><p>Ask for user password and generate symmetric key derived from it.</p>
+            <div class="docstring"><p>Ask for user password and generate symmetric key derived from it if
+no suppressing option was given (-p/--passwd).</p>
 </div>
 
 
