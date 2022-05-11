@@ -374,11 +374,6 @@ class Extractor:
 
                     # Collect decoded bits and create message.
                     bits_mess.extend(extracted_bits)
-                    
-                
-                elif eq_class.class_name == "ADD negated" or \
-                    eq_class.class_name == "SUB negated":
-                    pass
 
                 
             else:
